@@ -11,6 +11,7 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.status = "Published"
 
+
     def _process_html(self):
         rows = self.html.xpath('//table[@class="views-table cols-4"]/tbody/tr')
         for row in rows:
