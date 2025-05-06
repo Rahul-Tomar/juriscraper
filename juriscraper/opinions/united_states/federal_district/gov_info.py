@@ -2,12 +2,13 @@ import re
 from datetime import datetime
 from typing import Dict, Any
 
+import requests
 from typing_extensions import override
 
 from casemine.casemine_util import CasemineUtil
+from casemine.sample import TorProxyGenerator
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 from juriscraper.lib.html_utils import set_response_encoding
-
 
 class Site(OpinionSiteLinear):
 
@@ -17,45 +18,64 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         self.court_name = None
         self.json = {}
+        # Initialize the TorProxyGenerator
+        self.proxy_generator = TorProxyGenerator()
+        self.max_retry_attempts = 10  # Maximum number of proxy retries
 
     def _download(self, request_dict={}):
-        """Download the latest version of Site"""
-        i = 0
-        while True:
+        """Download the latest version of Site with proxy retry mechanism"""
+        retry_count = 0
+        while retry_count < self.max_retry_attempts:
             try:
-                # Getting new us proxy
-                us_proxy = CasemineUtil.get_us_proxy()
+                # Get a new proxy from TorProxyGenerator
+                # proxy = self.proxy_generator.get_proxy()
+                # proxy={
+                #     'http': 'socks5h://127.0.0.1:9050',
+                #     'https': 'socks5h://127.0.0.1:9050',
+                # }
+
                 # Setting in proxies header
                 self.proxies = {
-                    "http": f"{us_proxy.ip}:{us_proxy.port}", "https": f"{us_proxy.ip}:{us_proxy.port}",
+                    'http': "p.webshare.io:9999", 'https': "p.webshare.io:9999"
                 }
+
+                # Make the request
                 self._request_url_post(self.url)
+
+                # Process the response (will raise exception if status code is not successful)
                 self._post_process_response()
-                break
+
+                # If we reach here, request was successful
+                return self._return_response_text_object()
+
             except Exception as ex:
-                if str(ex).__contains__("Unable to connect to proxy") or str(ex).__contains__("Forbidden for url"):
-                    # print(f"{i} {ex} - hitting with new proxy after 2 minutes")
-                    # sleep(30)
-                    if i == 100:
-                        break
-                    else:
-                        continue
+                retry_count += 1
+                error_message = str(ex)
+                # Check if it's a proxy-related error
+                if "Unable to connect to proxy" in error_message or "Forbidden for url" in error_message or "timed out" in error_message or "Connection refused" in error_message:
+
+                    print(f"Attempt {retry_count}/{self.max_retry_attempts}: {error_message} - trying with new proxy")
+
+                    # Continue to next iteration which will get a new proxy
+                    continue
                 else:
+                    # If it's not a proxy-related error, re-raise the exception
                     raise ex
-        return self._return_response_text_object()
+
+        # If we've exhausted all retry attempts
+        raise Exception(f"Failed to connect after {self.max_retry_attempts} proxy attempts")
 
     @override
     def _request_url_post(self, url):
         """Execute POST request and assign appropriate request dictionary values"""
-        self.request["url"] = url
-        self.request["response"] = self.request["session"].post(
-            url,
+        self.request["response"] = requests.post(
+            url=url,
             headers=self.request["headers"],
             verify=self.request["verify"],
             data=self.parameters,
             proxies=self.proxies,
             timeout=60,
-            **self.request["parameters"],
+            # **self.request["parameters"],
         )
 
     @override
@@ -63,6 +83,9 @@ class Site(OpinionSiteLinear):
         """Cleanup to response object"""
         self.tweak_response_object()
         self.request["response"].raise_for_status()
+        # Check the status code explicitly
+        if self.request["response"].status_code != 200:
+            raise Exception(f"Request failed with status code: {self.request['response'].status_code}")
         set_response_encoding(self.request["response"])
 
     def _process_html(self) -> None:
@@ -73,8 +96,7 @@ class Site(OpinionSiteLinear):
             package_id = row["fieldMap"]["packageid"]
             docket = row["line1"].split()[0]
             date_arr = str(row['line2']).split(".")
-            # print(row['line2'])
-            # print(row['line1'])
+
             date_finder = date_arr[-1]
             if date_finder.__eq__(""):
                 date_finder = date_arr[-2]
@@ -94,18 +116,10 @@ class Site(OpinionSiteLinear):
                 title = row["fieldMap"]["title"]
 
             if title.__eq__(''):
-                title=str(row["line2"]).split(".")[2]
+                title = str(row["line2"]).split(".")[2]
             # print(title)
             self.cases.append({
-                "docket": [docket],
-                "name": title,
-                "url": row["fieldMap"]["url"],
-                "date": date_str,
-                "summary": row["line2"],
-                "status": "Unknown",
-                "teaser": teaser
-                }
-            )
+                "docket": [docket], "name": title, "url": row["fieldMap"]["url"], "date": date_str, "summary": row["line2"], "status": "Unknown", "teaser": teaser})
 
     def extract_from_text(self, scraped_text: str) -> Dict[str, Any]:
         """Pass scraped text into function and return precedential status
@@ -124,13 +138,8 @@ class Site(OpinionSiteLinear):
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.method = "POST"
-        self.request["headers"] = {'Host': 'www.govinfo.gov',
-                                   'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:134.0) Gecko/20100101 Firefox/134.0',
-                                   'Accept': 'application/json, text/plain, */*',
-                                   'Accept-Language': 'en-US,en;q=0.5',
-                                   'Accept-Encoding': 'gzip, deflate, br, zstd',
-                                   'Connection': 'keep-alive',
-                                   'Content-Type': 'application/json', }
+        self.request["headers"] = {
+            'Host': 'www.govinfo.gov', 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:134.0) Gecko/20100101 Firefox/134.0', 'Accept': 'application/json, text/plain, */*', 'Accept-Language': 'en-US,en;q=0.5', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Connection': 'keep-alive', 'Content-Type': 'application/json', }
         flag = True
         page = 0
         while flag:

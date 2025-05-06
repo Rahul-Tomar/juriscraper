@@ -37,7 +37,7 @@ class Site(OpinionSiteLinear):
 
     def hit_retry(self,html_url):
         try:
-            response = requests.get(url=html_url, headers={"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"}, proxies={"http": "p.webshare.io:9999", "https": "p.webshare.io:9999"}, timeout=120)
+            response = requests.get(url=html_url, proxies={"http": "p.webshare.io:9999", "https": "p.webshare.io:9999"}, timeout=120)
             if response.status_code==200:
                 payload = response.content.decode("utf8")
                 text = self._clean_text(payload)
