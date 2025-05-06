@@ -5,10 +5,16 @@
 # Neutral Citation Format (Memorandum opinions): T.C. Memo 2012-1
 # Neutral Citation Format (Summary opinions: T.C. Summary Opinion 2012-1
 import json
+import os
+import shutil
 import time
 from datetime import date, datetime, timedelta
 from typing import Tuple
 
+import requests
+from typing_extensions import override
+
+from casemine.constants import MAIN_PDF_PATH
 from juriscraper.AbstractSite import logger
 from juriscraper.lib.string_utils import titlecase
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
@@ -71,6 +77,15 @@ class Site(OpinionSiteLinear):
                 if case["documentType"] == "T.C. Opinion"
                 else "Unpublished"
             )
+            temp_dir = f'/home/gaugedata/Downloads/temp_dir_for_tax/'
+            os.makedirs(temp_dir, exist_ok=True)
+            file_name=temp_dir+f"{case['docketNumber']}.pdf"
+            response = requests.get(url=url, proxies={"http": "23.27.208.154:5864", "https": "23.27.208.154:5864"})
+            response.raise_for_status()
+            # print(f'pdf_url - {url}')
+            with open(file_name, 'wb') as file:
+                file.write(response.content)
+            # print("pdf downloaded")
             self.cases.append(
                 {
                     "judge": [case.get(
@@ -126,11 +141,61 @@ class Site(OpinionSiteLinear):
 
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        print(f"startDate {start_date.strftime('%m/%d/%Y')} -> endDate {end_date.strftime('%m/%d/%Y')}")
+        # print(f"startDate {start_date.strftime('%m/%d/%Y')} -> endDate {end_date.strftime('%m/%d/%Y')}")
         self.params = {
             "dateRange": "customDates", "startDate": start_date.strftime("%m/%d/%Y"), "endDate": end_date.strftime("%m/%d/%Y"), "opinionTypes": "MOP,SOP,TCOP", }
         self.parse()
         return 0
+
+    @override
+    def download_pdf(self, data, objectId):
+        pdf_url = data.__getitem__('pdf_url')
+        html_url = data.__getitem__('html_url')
+        year = int(data.__getitem__('year'))
+        court_name = data.get('court_name')
+        court_type = data.get('court_type')
+
+        if str(court_type).__eq__('Federal'):
+            state_name=data.get('circuit')
+        else:
+            state_name = data.get('state')
+        opinion_type = data.get('opinion_type')
+
+        if str(opinion_type).__eq__("Oral Argument"):
+            path = MAIN_PDF_PATH + court_type + "/" + state_name + "/" + court_name + "/" + "oral arguments/" + str(year)
+        else:
+            path = MAIN_PDF_PATH + court_type + "/" + state_name + "/" + court_name + "/" + str(year)
+
+        obj_id = str(objectId)
+        download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
+
+        if pdf_url.__eq__("") or (pdf_url is None) or pdf_url.__eq__("null"):
+            if html_url.__eq__("") or (html_url is None) or html_url.__eq__("null"):
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 2}})
+            else:
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 0}})
+        else:
+            try:
+                # Source file
+                source_path = f'/home/gaugedata/Downloads/temp_dir_for_tax/{data.__getitem__("docket")[0]}.pdf'
+
+                # Destination path with new filename
+                # destination_path = '/synology/PDFs/US/juriscraper/Special/Tax/United States Tax Court/2025/680632cea0960b94ae336600.pdf'
+
+                # Create destination directory if it doesn't exist
+                os.makedirs(os.path.dirname(download_pdf_path), exist_ok=True)
+
+                # Move and rename the file
+                shutil.move(source_path, download_pdf_path)
+                self.judgements_collection.update_one({"_id": objectId}, {"$set": {"processed": 0}})
+            except Exception as ex:
+                print(f"Error while downloading the PDF: {ex}")
+                self.judgements_collection.update_many({"_id": objectId}, {
+                    "$set": {"processed": 2}})
+        return download_pdf_path
+
 
     def get_court_type(self):
         return "Special"

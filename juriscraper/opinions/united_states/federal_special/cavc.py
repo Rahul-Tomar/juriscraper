@@ -6,12 +6,14 @@ History:
  - 2014-08-06: Updated by mlr.
  - 2023-01-23: Update by William Palin
 """
-
-import datetime
+from datetime import date, datetime
+import html
 import re
-from datetime import date
 from typing import Any, Dict
 
+from lxml import html
+
+from casemine.casemine_util import CasemineUtil
 from juriscraper.lib.string_utils import titlecase
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
@@ -21,10 +23,29 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.url = "http://www.uscourts.cavc.gov/opinions.php"
         self.court_id = self.__module__
-        self.last_month = date.today() - datetime.timedelta(weeks=4)
+        # self.last_month = date.today() - datetime.timedelta(weeks=4)
         self.status = "Published"
 
     def _process_html(self):
+        cases = self.html.xpath(".//tbody/tr/td/a/parent::td/parent::tr")
+        for case in cases:
+            date_text = case.xpath(".//td/text()")[1]
+            # print(date_text)
+            clean_date = datetime.strptime(date_text, "%d%b%y")
+            curr_date =  clean_date.strftime("%d/%m/%Y")
+            res = CasemineUtil.compare_date(self.crawled_till, curr_date)
+            if res == 1:
+                return
+            self.cases.append({
+                "url": case.xpath(".//a/@href")[0],
+                "date": clean_date.strftime("%m/%d/%Y"),
+                "docket": [case.xpath(".//a/text()")[0]],
+                "name":  case.xpath(".//td/text()")[0]
+            })
+            # print(html.tostring(case,pretty_print=True).decode("utf-8"))
+
+
+    def _process_html_old(self):
         """Process the CAVC website and collect new opinions
 
         :return: None
@@ -86,3 +107,19 @@ class Site(OpinionSiteLinear):
             },
         }
         return metadata
+
+    def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
+        self.parse()
+        return 0
+
+    def get_class_name(self):
+        return "cavc"
+
+    def get_court_type(self):
+        return "Special"
+
+    def get_state_name(self):
+        return "Claims"
+
+    def get_court_name(self):
+        return "United States Court of Appeals for Veterans Claims"

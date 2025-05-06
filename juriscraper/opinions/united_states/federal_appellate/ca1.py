@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 from bs4 import BeautifulSoup
 from lxml import etree
+import requests
 from typing_extensions import override
 
 from casemine.CaseMineCrawl import CaseMineCrawl
@@ -150,15 +151,13 @@ class Site(OpinionSiteLinear):
     @override
     def _request_url_post(self, url):
         """Execute POST request and assign appropriate request dictionary values"""
-        self.request["url"] = url
-        self.request["response"] = self.request["session"].post(
-            url,
+        self.request["response"] = requests.post(
+            url=url,
             headers=self.request["headers"],
             verify=self.request["verify"],
             data=self.parameters,
             proxies=self.proxies,
-            timeout=60,
-            **self.request["parameters"],
+            timeout=60,  # **self.request["parameters"],
         )
 
     def parse(self):
@@ -290,11 +289,11 @@ class Site(OpinionSiteLinear):
             url = url_tag.find_next("a").attrs.get('href')
             date_filed = td.__getitem__(0).text
             docket = td.__getitem__(2).text
-            self.cases.append(
-                {"name": name.strip(),
-                 "url": url,
-                 "date": date_filed,
-                 "status": status,
+            self.cases.append({
+                "name": name.strip(),
+                "url": url,
+                "date": date_filed,
+                "status": status,
                  "docket": docket,
                  "lower_court": lower_court,
             })

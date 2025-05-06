@@ -207,12 +207,20 @@ class CaseMineCrawl:
                     else:
                         object_id = dup2.get("_id")
             else:
-                # Check if the document already exists and has been processed
-                processed = dup.get("processed")
-                if processed == 10:
-                    raise Exception("Judgment already Exists!")  # Replace with your custom DuplicateRecordException
+                query4 = {
+                    "court_name": court_name, "date": date, "title": title, "docket": docket}
+                dup2 = self.judgements_collection.find_one(query4)
+                if dup2 is None:
+                    inserted_doc = self.judgements_collection.insert_one(data)
+                    object_id = inserted_doc.inserted_id
+                    self.flag = True
                 else:
-                    object_id = dup.get("_id")
+                    # Check if the document already exists and has been processed
+                    processed = dup2.get("processed")
+                    if processed == 10:
+                        raise Exception("Judgment already Exists!")  # Replace with your custom DuplicateRecordException
+                    else:
+                        object_id = dup2.get("_id")
         return object_id
 
     def _fetch_duplicate_old(self, data):
@@ -267,22 +275,35 @@ class CaseMineCrawl:
                 self.judgements_collection.update_one({"_id": objectId}, {
                     "$set": {"processed": 0}})
         else:
-            try:
-                os.makedirs(path, exist_ok=True)
-                proxy = CasemineUtil.get_us_proxy()
-                response = requests.get(url=pdf_url, headers={
-                    "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"},
-                    proxies={"http": f"{proxy.ip}:{proxy.port}",
-                             "https": f"{proxy.ip}:{proxy.port}"}, timeout=120)
-                response.raise_for_status()
-                with open(download_pdf_path, 'wb') as file:
-                    file.write(response.content)
-                self.judgements_collection.update_one({"_id": objectId},
-                                                      {"$set": {"processed": 0}})
-            except requests.RequestException as e:
-                print(f"Error while downloading the PDF: {e}")
-                self.judgements_collection.update_many({"_id": objectId}, {
-                    "$set": {"processed": 2}})
+            i = 0
+            while True:
+                try:
+                    os.makedirs(path, exist_ok=True)
+                    proxy = CasemineUtil.get_us_proxy()
+                    response = requests.get(url=pdf_url,
+                        proxies={
+                            'http': 'p.webshare.io:9999',  # Use socks5h to resolve DNS over proxy
+                            'https': 'p.webshare.io:9999'},
+                        timeout=120
+                    )
+                    response.raise_for_status()
+                    with open(download_pdf_path, 'wb') as file:
+                        file.write(response.content)
+                    self.judgements_collection.update_one({"_id": objectId},
+                                                          {"$set": {"processed": 0}})
+                    break
+                except requests.RequestException as e:
+                    if str(e).__contains__("Unable to connect to proxy"):
+                        i+=1
+                        if i>10:
+                            break
+                        else:
+                            continue
+                    else:
+                        print(f"Error while downloading the PDF: {e}")
+                        self.judgements_collection.update_many({"_id": objectId}, {
+                        "$set": {"processed": 2}})
+                        break
         return download_pdf_path
 
     @abstractmethod
