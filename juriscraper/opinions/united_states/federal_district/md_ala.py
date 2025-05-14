@@ -25,6 +25,9 @@ class Site(OpinionSiteLinear):
             # Extract case title (next text node after <br>)
             title = row.xpath('./td[2]//text()[2]')[0].strip()
             pdf_url = row.xpath('./td[3]/a[1]/@href')[0]
+            if not str(pdf_url).__contains__("https://ecf.almd.uscourts.gov/cgi-bin/"):
+                pdf_url = "https://ecf.almd.uscourts.gov/cgi-bin/"+pdf_url
+
             texts = row.xpath('./td[3]//text()')
             presiding_judge = ''
             signed_by = ''

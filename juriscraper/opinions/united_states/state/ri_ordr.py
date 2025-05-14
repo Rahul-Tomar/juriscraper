@@ -43,7 +43,7 @@ class Site(ri.Site):
             }
         )
         response_json = self.download_json()
-        print(response_json)
+        # print(response_json)
         rows = response_json[-3][self.search_key][
             "ResultTables"
         ][0]["ResultRows"]

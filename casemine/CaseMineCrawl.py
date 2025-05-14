@@ -40,6 +40,9 @@ class CaseMineCrawl:
         self.crawled_till = dbObj.get('CrawledTill')
         records = self.crawling(self.crawled_till)
 
+    def get_crawl_till(self):
+        return self.crawled_till
+    
     def crawling(self, crawled_till) -> int:
         # Initialize the list with retro months
         retro_months = [-1, -3, -6, -12]
@@ -144,15 +147,15 @@ class CaseMineCrawl:
 
     def _process_opinion(self, data) -> bool:
         self.flag = False
-        objId = None
+        obj_id = None
         try:
-            objId = self._fetch_duplicate(data)
+            duplicate_id = self._fetch_duplicate(data)
+            obj_id = self.update_insert_meta(data, duplicate_id)
         except Exception as ex:
             if not str(ex).__eq__("Judgment already Exists!"):
                 raise Exception(ex)
-
-        if objId is not None:
-            contentPdf = self.download_pdf(data, objId)
+        if obj_id is not None:
+            content_pdf = self.download_pdf(data, obj_id)
         # flag = saveContent(judId, contentPdf)
         return self.flag
 
@@ -170,36 +173,24 @@ class CaseMineCrawl:
             else:
                 query1 = {"html_url":html_url}
                 dup1 = self.judgements_collection.find_one(query1)
-                if dup1 is None:
-                    inserted_doc=self.judgements_collection.insert_one(data)
-                    object_id = inserted_doc.inserted_id
-
-                    self.flag=True
-                else:
-                    query2 = {"court_name":court_name,"date":date, "title":title,"docket":docket}
+                if not dup1 is None:
+                    query2 = {"court_name": court_name, "date": date, "title": title, "docket": docket}
                     dup2 = self.judgements_collection.find_one(query2)
-                    if dup2 is None:
-                        inserted_doc = self.judgements_collection.insert_one(data)
-                        object_id = inserted_doc.inserted_id
-                        self.flag = True
-                    else:
+                    if not dup2 is None:
                         # Check if the document already exists and has been processed
                         processed = dup2.get("processed")
                         if processed == 10:
                             raise Exception("Judgment already Exists!")  # Replace with your custom DuplicateRecordException
                         else:
                             object_id = dup2.get("_id")
+
         else:
             query3 = {"pdf_url":pdf_url}
             dup = self.judgements_collection.find_one(query3)
             if dup is None:
                 query4 = {"court_name":court_name,"date":date, "title":title,"docket":docket}
                 dup2=self.judgements_collection.find_one(query4)
-                if dup2 is None:
-                    inserted_doc = self.judgements_collection.insert_one(data)
-                    object_id = inserted_doc.inserted_id
-                    self.flag = True
-                else:
+                if not dup2 is None:
                     # Check if the document already exists and has been processed
                     processed = dup2.get("processed")
                     if processed == 10:
@@ -210,11 +201,7 @@ class CaseMineCrawl:
                 query4 = {
                     "court_name": court_name, "date": date, "title": title, "docket": docket}
                 dup2 = self.judgements_collection.find_one(query4)
-                if dup2 is None:
-                    inserted_doc = self.judgements_collection.insert_one(data)
-                    object_id = inserted_doc.inserted_id
-                    self.flag = True
-                else:
+                if not dup2 is None:
                     # Check if the document already exists and has been processed
                     processed = dup2.get("processed")
                     if processed == 10:
@@ -222,6 +209,16 @@ class CaseMineCrawl:
                     else:
                         object_id = dup2.get("_id")
         return object_id
+
+    def update_insert_meta(self, data, existing_id):
+        if existing_id is None:
+            inserted_doc = self.judgements_collection.insert_one(data)
+            object_id = inserted_doc.inserted_id
+            self.flag = True
+            return object_id
+        else:
+            self.judgements_collection.update_one({'_id': existing_id}, {'$set': data})
+            return existing_id
 
     def _fetch_duplicate_old(self, data):
         # Create query for duplication
@@ -279,11 +276,16 @@ class CaseMineCrawl:
             while True:
                 try:
                     os.makedirs(path, exist_ok=True)
-                    proxy = CasemineUtil.get_us_proxy()
-                    response = requests.get(url=pdf_url,
+                    us_proxy = CasemineUtil.get_us_proxy()
+                    response = requests.get(
+                        url=pdf_url,
+                        headers={
+                            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+                        },
                         proxies={
-                            'http': 'p.webshare.io:9999',  # Use socks5h to resolve DNS over proxy
-                            'https': 'p.webshare.io:9999'},
+                            "http": f"http://{us_proxy.ip}:{us_proxy.port}",
+                            "https": f"http://{us_proxy.ip}:{us_proxy.port}"
+                        },
                         timeout=120
                     )
                     response.raise_for_status()

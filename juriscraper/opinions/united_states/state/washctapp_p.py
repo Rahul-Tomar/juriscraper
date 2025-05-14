@@ -9,13 +9,13 @@ from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 def fetch_case_info(url, headers, proxies, retries=4):
     if retries == 0:
-        print(f"Failed to fetch {url} after multiple attempts")
+        # print(f"Failed to fetch {url} after multiple attempts")
         return ""
 
     try:
         response = requests.get(url, headers=headers, proxies=proxies,
                                 timeout=120)
-        print(f"Fetching {url}: Status {response.status_code}")
+        # print(f"Fetching {url}: Status {response.status_code}")
         return response.text if response.status_code == 200 else ""
     except Exception as e:
         return fetch_case_info(url, headers, proxies, retries - 1)

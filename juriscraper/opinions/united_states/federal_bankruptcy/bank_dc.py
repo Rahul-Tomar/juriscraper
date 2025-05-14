@@ -24,12 +24,16 @@ class Site(OpinionSiteLinear):
             # PDF links
             pdf_links = row.xpath('./td[3]//a/@href')
             pdf_urls = [ link for link in pdf_links]  # adjust base URL if needed
+            new_url=str(pdf_urls[0])
+            if not new_url.__contains__("https://ecf.dcb.uscourts.gov/cgi-bin/"):
+                new_url="https://ecf.dcb.uscourts.gov/cgi-bin/"+new_url
+
 
             # Judge
             judge_line = row.xpath('./td[3]//text()[contains(., "Judge")]')
             judge = judge_line[0].replace('by', '').strip() if judge_line else ''
             self.cases.append({
-                'date': date, 'docket': [docket], 'name': title, 'url': pdf_urls[0], 'judge': [judge]})
+                'date': date, 'docket': [docket], 'name': title, 'url': new_url, 'judge': [judge]})
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.url=f'https://ecf.dcb.uscourts.gov/cgi-bin/Opinions.pl'

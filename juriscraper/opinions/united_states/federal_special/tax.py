@@ -80,7 +80,7 @@ class Site(OpinionSiteLinear):
             temp_dir = f'/home/gaugedata/Downloads/temp_dir_for_tax/'
             os.makedirs(temp_dir, exist_ok=True)
             file_name=temp_dir+f"{case['docketNumber']}.pdf"
-            response = requests.get(url=url, proxies={"http": "23.27.208.154:5864", "https": "23.27.208.154:5864"})
+            response = requests.get(url=url, proxies={'http': 'socks5h://127.0.0.1:9050','https': 'socks5h://127.0.0.1:9050',})
             response.raise_for_status()
             # print(f'pdf_url - {url}')
             with open(file_name, 'wb') as file:

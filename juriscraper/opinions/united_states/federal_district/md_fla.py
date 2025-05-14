@@ -41,7 +41,9 @@ class Site(OpinionSiteLinear):
             # PDF URL
             pdf_url = row.xpath('./td[3]/a/@href')
             pdf_url = pdf_url[0] if pdf_url else ""
-
+            if not str(pdf_url).startswith("http"):
+                pdf_url="https://ecf.flmd.uscourts.gov/cgi-bin/"+pdf_url
+            # print(pdf_url)
             # Judge
             judge = row.xpath('./td[4]/text()')
             judge = judge[0].strip() if judge else ""

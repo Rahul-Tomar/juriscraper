@@ -99,11 +99,11 @@ class Site(OpinionSite):
                 jud = self.justices[case["J."]] if case["J."] else ""
                 case["judge"] = [jud]
                 self.cases.append(case)
-                for revision_data in case["revisions"]:
-                    revision = case.copy()
-                    revision["Date"] = revision_data["date_string"]
-                    revision["Name_Url"] = revision_data["href"]
-                    self.cases.append(revision)
+                # for revision_data in case["revisions"]:
+                #     revision = case.copy()
+                case["Date"] = case["Date"]
+                case["Name_Url"] = case["href"]
+                self.cases.append(case['revision'])
 
     def extract_case_data_from_row(self, row):
         cell_index = 0
@@ -147,7 +147,14 @@ class Site(OpinionSite):
         return [case["Name"] for case in self.cases]
 
     def _get_download_urls(self):
-        return [case["Name_Url"] for case in self.cases]
+        name_urls = []
+        for case in self.cases:
+            pdf_url = str(case["Name_Url"])
+            if not pdf_url.__contains__(""):
+                pdf_url = "https://www.supremecourt.gov"+pdf_url
+
+            name_urls.append(pdf_url)
+        return name_urls
 
     def _get_case_dates(self):
         converted_dates = []

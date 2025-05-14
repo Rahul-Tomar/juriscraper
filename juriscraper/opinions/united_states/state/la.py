@@ -8,8 +8,6 @@
 import datetime
 from datetime import date
 
-from lxml import html
-
 from casemine.casemine_util import CasemineUtil
 from juriscraper.lib.html_utils import get_html_parsed_text
 from juriscraper.lib.string_utils import titlecase

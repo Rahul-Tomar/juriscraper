@@ -8,6 +8,8 @@ import requests
 from casemine.casemine_util import CasemineUtil
 from casemine.constants import MAIN_PDF_PATH
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
+from scheduler_bankruptcy import logger
+
 
 class Site(OpinionSiteLinear):
 
@@ -25,12 +27,12 @@ class Site(OpinionSiteLinear):
         new_file_path = os.path.join(path, f"{obj_id}.pdf")
 
         if os.path.exists(old_file_path):
-            print(f"Renaming: {old_file_path} → {new_file_path}")
+            # print(f"Renaming: {old_file_path} → {new_file_path}")
             os.rename(old_file_path, new_file_path)
             self.judgements_collection.update_one({"_id": objectId}, {
                          "$set": {"processed": 0}})
         else:
-            print(f"No file to rename for docket: {docket}")
+            # print(f"No file to rename for docket: {docket}")
             self.judgements_collection.update_one({"_id": objectId}, {
                          "$set": {"processed": 2}})
 
@@ -57,7 +59,8 @@ class Site(OpinionSiteLinear):
                 file.write(response.content)
 
         except requests.RequestException as e:
-            print(f"Error while downloading the PDF: {e}")
+            logger.info(f"Error while downloading the PDF: {e}")
+            # print(f"Error while downloading the PDF: {e}")
 
     def get_pdf_url(self, uiId, scrfToken,node,count):
         url = f"{self.base}{uiId}"
@@ -123,7 +126,7 @@ class Site(OpinionSiteLinear):
         return ""
 
     def process_html(self, start: datetime, end: datetime ,uiId,csrfToken) -> None:
-        print("inside process html")
+        # print("inside process html")
         innerHTML_values = [item['value'] for item in self.html if item.get('key') == 'innerHTML']
         html_values = [item['value'] for item in self.html if
                             item.get('key') == 'htmlValue']
@@ -221,7 +224,7 @@ class Site(OpinionSiteLinear):
         return resp
 
     def get_data(self, uiId, scrfToken):
-        print("inside get data")
+        # print("inside get data")
         url = f"{self.base}{uiId}"
         body = {
             "csrfToken":scrfToken

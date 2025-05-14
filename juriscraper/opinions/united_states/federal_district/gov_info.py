@@ -3,10 +3,11 @@ from datetime import datetime
 from typing import Dict, Any
 
 import requests
+from stem import Signal
+from stem.control import Controller
 from typing_extensions import override
 
 from casemine.casemine_util import CasemineUtil
-from casemine.sample import TorProxyGenerator
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 from juriscraper.lib.html_utils import set_response_encoding
 
@@ -19,8 +20,13 @@ class Site(OpinionSiteLinear):
         self.court_name = None
         self.json = {}
         # Initialize the TorProxyGenerator
-        self.proxy_generator = TorProxyGenerator()
         self.max_retry_attempts = 10  # Maximum number of proxy retries
+
+    def renew_tor_ip(self):
+        with Controller.from_port(port=9051) as controller:
+            controller.authenticate()  # Uses default cookie-based auth
+            controller.signal(Signal.NEWNYM)
+            print("[TOR] Sent NEWNYM signal to rotate IP")
 
     def _download(self, request_dict={}):
         """Download the latest version of Site with proxy retry mechanism"""
@@ -29,18 +35,29 @@ class Site(OpinionSiteLinear):
             try:
                 # Get a new proxy from TorProxyGenerator
                 # proxy = self.proxy_generator.get_proxy()
-                # proxy={
-                #     'http': 'socks5h://127.0.0.1:9050',
-                #     'https': 'socks5h://127.0.0.1:9050',
+                self.proxies={
+                    'http': 'socks5h://127.0.0.1:9050',
+                    'https': 'socks5h://127.0.0.1:9050',
+                }
+                # us_proxy=CasemineUtil.get_us_proxy()
+                # # Setting in proxies header
+                # self.proxies = {
+                #     'http': f"http://{us_proxy.ip}:{us_proxy.port}", 'https': f"http://{us_proxy.ip}:{us_proxy.port}"
                 # }
 
-                # Setting in proxies header
-                self.proxies = {
-                    'http': "p.webshare.io:9999", 'https': "p.webshare.io:9999"
+                # Make the request
+                # self._request_url_post(self.url)
+                headers={
+                    'Host': 'www.govinfo.gov',
+                    'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:134.0) Gecko/20100101 Firefox/134.0',
+                    'Accept': 'application/json, text/plain, */*',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate, br, zstd',
+                    'Connection': 'keep-alive',
+                    'Content-Type': 'application/json',
                 }
 
-                # Make the request
-                self._request_url_post(self.url)
+                self.request["response"] = requests.post(url=self.url,headers=headers,data=self.parameters,proxies=self.proxies,timeout=60)
 
                 # Process the response (will raise exception if status code is not successful)
                 self._post_process_response()
@@ -53,10 +70,8 @@ class Site(OpinionSiteLinear):
                 error_message = str(ex)
                 # Check if it's a proxy-related error
                 if "Unable to connect to proxy" in error_message or "Forbidden for url" in error_message or "timed out" in error_message or "Connection refused" in error_message:
-
                     print(f"Attempt {retry_count}/{self.max_retry_attempts}: {error_message} - trying with new proxy")
-
-                    # Continue to next iteration which will get a new proxy
+                    self.renew_tor_ip()
                     continue
                 else:
                     # If it's not a proxy-related error, re-raise the exception
@@ -70,7 +85,9 @@ class Site(OpinionSiteLinear):
         """Execute POST request and assign appropriate request dictionary values"""
         self.request["response"] = requests.post(
             url=url,
-            headers=self.request["headers"],
+            headers={
+                "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+            },
             verify=self.request["verify"],
             data=self.parameters,
             proxies=self.proxies,
