@@ -33,7 +33,7 @@ class Site(OpinionSiteLinear):
 
     def _process_html(self) -> None:
         count = 0
-        print("inside process")
+        # print("inside process")
         for row in self.html.xpath(".//table[@class='DocumentGrid']//tr//td/table"):
             url = row.xpath(".//tr[1]//font/a/@href")[0]
             date =row.xpath(".//tr[2]//table//tr[2]//td[1]/text()")[0]

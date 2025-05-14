@@ -6,6 +6,8 @@ import requests
 from casemine.casemine_util import CasemineUtil
 from casemine.constants import MAIN_PDF_PATH
 from juriscraper.OpinionSite import OpinionSite
+from schedular_fed_n_special import logger
+
 
 class Site(OpinionSite):
     def __init__(self, *args, **kwargs):
@@ -58,7 +60,10 @@ class Site(OpinionSite):
         rows = self.html.xpath("//div[@class='mt-0 pt-0 pb-3 row']")
         for row in rows:
             # print(html.tostring(row,pretty_print=True).decode())
-            href = row.xpath('.//a/@href')[0]
+            href = str(row.xpath('.//a/@href')[0])
+            if not href.__contains__("https://media.cadc.uscourts.gov"):
+                href="https://media.cadc.uscourts.gov"+href
+
             docket = row.xpath('string(.//a)')
             title = row.xpath(
                 'string(.//div[@class="col-sm-9 ml-3 ml-sm-0"]/div[@class="row"][1])')
@@ -84,7 +89,7 @@ class Site(OpinionSite):
                 result = self.html.xpath(
                     "//div[@class='overview']//p[text()='No items found.']/text()")
                 if list(result).__len__() != 0 and (year >= end_date.year and month >= end_date.month):
-                    print(result[0])
+                    # print(result[0])
                     break
                 self.downloader_executed = False
         return 0
@@ -117,8 +122,8 @@ class Site(OpinionSite):
         try:
             response = requests.get(url=pdf_url, headers={
                 "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"},
-                                    proxies={"http": "p.webshare.io:9999",
-                                             "https": "p.webshare.io:9999"},
+                                    proxies={ 'http': 'socks5h://127.0.0.1:9050',
+                    'https': 'socks5h://127.0.0.1:9050'},
                                     timeout=120)
             response.raise_for_status()
             with open(download_pdf_path, 'wb') as file:
@@ -126,7 +131,7 @@ class Site(OpinionSite):
             self.judgements_collection.update_one({"_id": objectId},
                                                   {"$set": {"processed": 0}})
         except requests.RequestException as e:
-            print(f"Error while downloading the PDF: {e}")
+            logger.info(f"Error while downloading the PDF: {e}")
             self.judgements_collection.update_many({"_id": objectId},
                                                    {"$set": {"processed": 2}})
         return download_pdf_path

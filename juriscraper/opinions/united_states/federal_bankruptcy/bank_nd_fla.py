@@ -20,7 +20,7 @@ class Site(OpinionSiteLinear):
             state_name = data.get('state')
         opinion_type = data.get('opinion_type')
         pdf_name = data.get('pdf_url').split('/')[-1]
-        print(pdf_name)
+        # print(pdf_name)
 
         if str(opinion_type).__eq__("Oral Argument"):
             path = MAIN_PDF_PATH + court_type + "/" + state_name + "/" + court_name + "/" + "oral arguments/" + str(year)
@@ -39,8 +39,8 @@ class Site(OpinionSiteLinear):
                 url="https://ecf.flnb.uscourts.gov/opinions/",
                 data=payload,
                 proxies={
-                    "http": "http://p.webshare.io:9999",
-                    "https": "http://p.webshare.io:9999"
+                    'http': 'socks5h://127.0.0.1:9050',
+                    'https': 'socks5h://127.0.0.1:9050',
                 },
                 timeout=120
             )
@@ -52,9 +52,9 @@ class Site(OpinionSiteLinear):
             self.judgements_collection.update_one({"_id": objectId},
                                                   {"$set": {"processed": 0}})
 
-            print("PDF downloaded successfully.")
+            # print("PDF downloaded successfully.")
         except requests.RequestException as e:
-            print(f"Error while downloading the PDF: {e}")
+            # print(f"Error while downloading the PDF: {e}")
             self.judgements_collection.update_many({"_id": objectId}, {
                 "$set": {"processed": 2}})
         return download_pdf_path
@@ -82,7 +82,7 @@ class Site(OpinionSiteLinear):
 
 
     def _process_html(self) -> None:
-        print("inside process")
+        # print("inside process")
         # print(self.html.xpath(".//table[@id='DGOpinionSearch']"))
         count=0
         for row in self.html.xpath(".//table[@id='DGOpinionSearch']//tr"):

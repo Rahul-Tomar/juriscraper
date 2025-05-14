@@ -12,9 +12,9 @@ class Site(scotus_chambers.Site):
         self.precedential = "Relating-to"
         self.court = "relatingtoorders"
 
-    def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        self.parse()
-        return 0
+    # def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
+    #     self.parse()
+    #     return 0
 
     def get_class_name(self):
         return "scotus_relating"

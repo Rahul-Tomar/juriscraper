@@ -1,10 +1,5 @@
 import re
 from datetime import datetime
-
-from lxml import html
-from numpy.core.defchararray import title
-
-from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 

@@ -43,7 +43,7 @@ class Site(nj.Site):
             )[0]
 
             docket=doc.split('/')
-            print(docket)
+            # print(docket)
             case = {
                 "date": date,
                 "docket": docket,

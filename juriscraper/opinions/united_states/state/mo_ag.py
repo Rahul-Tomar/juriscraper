@@ -28,7 +28,7 @@ class Site(OpinionSiteLinear):
 
             topic = row.xpath('./td[3]//text()')
             summary = row.xpath('./td[4]/text()')
-            print(f"{date}, {self.current_year}")
+            # print(f"{date}, {self.current_year}")
             self.cases.append({
                 'date': f"{date}, {self.current_year}",
                 "docket":opinion,

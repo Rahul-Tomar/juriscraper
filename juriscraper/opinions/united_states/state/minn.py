@@ -148,7 +148,7 @@ class Site(OpinionSiteLinear):
                 else:
                     break
 
-            print(f"hitting url {self.url}")
+            # print(f"hitting url {self.url}")
             self.html =self._download()
             self._process_html()
 
