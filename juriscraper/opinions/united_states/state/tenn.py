@@ -16,6 +16,8 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.status = "Published"
+        self.proxies = {
+            'http': 'http://104.223.126.101:8800', 'https': 'http://104.223.126.101:8800', }
 
     def _process_html(self):
         # print(self.html)

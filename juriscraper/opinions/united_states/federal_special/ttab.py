@@ -1,8 +1,11 @@
 from datetime import datetime
+import os
 
 import requests
 from typing_extensions import override
 
+from casemine.casemine_util import CasemineUtil
+from casemine.constants import MAIN_PDF_PATH
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 class Site(OpinionSiteLinear):
@@ -64,7 +67,7 @@ class Site(OpinionSiteLinear):
         }
         new_url = str(url).split("||")[0]
         data = str(url).split("||")[1]
-        self.request["response"] = requests.post(url=new_url, headers=headers, verify=self.request["verify"], data=data, proxies=self.proxies, timeout=60)
+        self.request["response"] = requests.post(url=new_url, headers=headers, verify=self.request["verify"], data=data, proxies= self.proxies, timeout=60)
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.url='https://ttab-reading-room.uspto.gov/ttab-efoia-api/decision/search'
@@ -94,3 +97,43 @@ class Site(OpinionSiteLinear):
 
     def get_court_name(self):
         return "Trademark Trial and Appeal Board"
+
+    @override
+    def download_pdf(self, data, objectId):
+        pdf_url = data.__getitem__('pdf_url')
+        html_url = data.__getitem__('html_url')
+        year = int(data.__getitem__('year'))
+        court_name = data.get('court_name')
+        court_type = data.get('court_type')
+
+        if str(court_type).__eq__('Federal'):
+            state_name = data.get('circuit')
+        else:
+            state_name = data.get('state')
+        opinion_type = data.get('opinion_type')
+
+        if str(opinion_type).__eq__("Oral Argument"):
+            path = MAIN_PDF_PATH + court_type + "/" + state_name + "/" + court_name + "/" + "oral arguments/" + str(year)
+        else:
+            path = MAIN_PDF_PATH + court_type + "/" + state_name + "/" + court_name + "/" + str(year)
+
+        obj_id = str(objectId)
+        download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
+        try:
+            os.makedirs(path, exist_ok=True)
+            us_proxy = CasemineUtil.get_us_proxy()
+            response = requests.get(url=pdf_url, headers={
+                "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux  x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"},
+                                    proxies={
+                'http': "http://38.152.199.134:8800", 'https': "http://38.152.199.134:8800"
+                                    },
+                                    timeout=120)
+            response.raise_for_status()
+            with open(download_pdf_path, 'wb') as file:
+                file.write(response.content)
+            self.judgements_collection.update_one({"_id": objectId}, {"$set": {"processed": 0}})
+        except requests.RequestException as e:
+                print(f"Error while downloading the PDF: {e}")
+                self.judgements_collection.update_many({"_id": objectId}, {
+                    "$set": {"processed": 2}})
+        return download_pdf_path

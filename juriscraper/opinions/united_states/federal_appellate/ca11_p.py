@@ -75,7 +75,11 @@ class Site(OpinionSite):
                     self.title.append(e)
 
                 for e in self.html.xpath("//tr[./td[1]/a//text()]/td[1]/a/@href"):
-                    self.urls.append(e)
+                    if not str(e).startswith("http"):
+                        self.urls.append("http://media.ca11.uscourts.gov/opinions"+e)
+                    else:
+                        self.urls.append(e)
+                    print(e)
 
                 for date_string in self.html.xpath(
                     "//tr[./td[1]/a//text()]/td[5]//text()"):

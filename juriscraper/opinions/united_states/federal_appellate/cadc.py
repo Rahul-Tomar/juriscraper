@@ -5,8 +5,8 @@ import requests
 
 from casemine.casemine_util import CasemineUtil
 from casemine.constants import MAIN_PDF_PATH
+from juriscraper.AbstractSite import logger
 from juriscraper.OpinionSite import OpinionSite
-from schedular_fed_n_special import logger
 
 
 class Site(OpinionSite):
@@ -14,6 +14,9 @@ class Site(OpinionSite):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.court_type = 'opinions'
+        us_prox=CasemineUtil.get_us_proxy()
+        self.prox = {
+            "http": f"http://{us_prox.ip}:{us_prox.port}", "https": f"http://{us_prox.ip}:{us_prox.port}"}
         self.names = []
         self.urls = []
         self.dates = []
@@ -62,7 +65,7 @@ class Site(OpinionSite):
             # print(html.tostring(row,pretty_print=True).decode())
             href = str(row.xpath('.//a/@href')[0])
             if not href.__contains__("https://media.cadc.uscourts.gov"):
-                href="https://media.cadc.uscourts.gov"+href
+                href = "https://media.cadc.uscourts.gov"+href
 
             docket = row.xpath('string(.//a)')
             title = row.xpath(
@@ -122,8 +125,7 @@ class Site(OpinionSite):
         try:
             response = requests.get(url=pdf_url, headers={
                 "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"},
-                                    proxies={ 'http': 'socks5h://127.0.0.1:9050',
-                    'https': 'socks5h://127.0.0.1:9050'},
+                                    proxies=self.prox,
                                     timeout=120)
             response.raise_for_status()
             with open(download_pdf_path, 'wb') as file:

@@ -7,10 +7,11 @@ History:
 """
 import os
 import re
-from datetime import date
+from datetime import date, datetime
 from itertools import chain
 from typing import Any, Dict, List, Optional
 
+import cloudscraper
 import pdfkit
 import requests
 from bs4 import BeautifulSoup
@@ -19,6 +20,7 @@ from lxml.html import fromstring
 from tldextract.tldextract import update
 from typing_extensions import override
 
+from casemine.casemine_util import CasemineUtil
 from juriscraper.AbstractSite import logger
 from juriscraper.lib.judge_parsers import normalize_judge_string
 from juriscraper.lib.string_utils import harmonize
@@ -34,13 +36,12 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
 
         self.court_id = self.__module__
-        self.url = self.build_url()
-
-        date_keys = rrule(
-            MONTHLY, dtstart=self.first_opinion_date, until=date(2023, 12, 30)
-        )
-        self.back_scrape_iterable = [i.date() for i in date_keys]
-        self.expected_content_types = ["application/pdf", "text/html"]
+        # self.url = self.build_url()
+        # date_keys = rrule(
+        #     MONTHLY, dtstart=self.first_opinion_date, until=date(2023, 12, 30)
+        # )
+        # self.back_scrape_iterable = [i.date() for i in date_keys]
+        # self.expected_content_types = ["application/pdf", "text/html"]
 
     def build_url(self, target_date: Optional[date] = None) -> str:
         """URL as is loads most recent month page
@@ -84,12 +85,19 @@ class Site(OpinionSiteLinear):
             ).strip(", ")
 
             if not self.is_court_of_interest(court):
-                logger.debug("Skipping %s", court)
+                # logger.debug("Skipping %s", court)
                 continue
 
-            url = row.xpath("td[1]/a/@href")[0]
+            url = str(row.xpath("td[1]/a/@href")[0])
+            if not url.__contains__("https://nycourts.gov/reporter/"):
+                url="https://nycourts.gov/reporter/"+url.replace("../","")
+
             name = harmonize(row.xpath("td[1]/a")[0].text_content())
             opinion_date = row.xpath("td[3]")[0].text_content()
+            curr_date = datetime.strptime(opinion_date, "%m/%d/%Y").strftime("%d/%m/%Y")
+            res = CasemineUtil.compare_date(self.crawled_till, curr_date)
+            if res == 1:
+                continue
             slip_cite = row.xpath("td[4]")[0].text_content()
             status = "Unpublished" if "(U)" in slip_cite else "Published"
 
@@ -202,8 +210,10 @@ class Site(OpinionSiteLinear):
         os.makedirs(path, exist_ok=True)
         update_query={}
         try:
-            response = requests.get(url=pdf_url, headers={"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"}, proxies={"http": "p.webshare.io:9999","https": "p.webshare.io:9999"}, timeout=120)
-            response.raise_for_status()
+            proxies = {
+                'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050', }
+            scraper = cloudscraper.create_scraper()  # This handles Cloudflare challenges
+            response = scraper.get(pdf_url, proxies=proxies)
             if pdf_url.endswith('.html') or pdf_url.endswith('.htm'):
                 # if pdf url contains html then refine it and convert html to pdf and also save modified html
                 soup = BeautifulSoup(response.text, 'html.parser')
@@ -216,6 +226,9 @@ class Site(OpinionSiteLinear):
                 # Find all anchor tags and remove the href attribute
                 for tag in soup.find_all('a'):
                     del tag['href']
+
+                for script in soup.find_all('script'):
+                    script.decompose()
 
                 # Find all <p> tags and remove the ones that are empty
                 for p in soup.find_all('p'):

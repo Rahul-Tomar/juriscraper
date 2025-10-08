@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from lxml import html
-from pkg_resources.extern import names
 
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 

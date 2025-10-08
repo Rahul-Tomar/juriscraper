@@ -39,7 +39,9 @@ class Site(OpinionSiteLinear):
                 dockets=dockets.replace("_"," ")
                 dockets=dockets.replace(":","")
                 dock=dockets.split(" ")
-                print(dock)
+                # print(dock)
+                if not str(url).__contains__("https://www.courts.mo.gov"):
+                    url = "https://www.courts.mo.gov" + url
                 self.cases.append(
                     {
                         "name": name,
@@ -62,11 +64,13 @@ class Site(OpinionSiteLinear):
                     proxy = CasemineUtil.get_us_proxy()
                     prox = {
                         "http": f"{proxy.ip}:{proxy.port}", "https": f"{proxy.ip}:{proxy.port}", }
-                    self.html = requests.get(url=self.url,proxies=prox,headers=self.request["headers"],verify = self.request["verify"])
+                    response = requests.get(url=self.url,proxies=prox,headers=self.request["headers"],verify = self.request["verify"])
+                    self.html = self._make_html_tree(response.text)
+                    # print(type(self.html.text))
                     break
                 except Exception as ex:
                     i+=1
-                    print(f"{i} {proxy.ip}:{proxy.port}  - {ex}")
+                    # print(f"{i} {proxy.ip}:{proxy.port}  - {ex}")
                     if str(ex).__contains__("Unable to connect to proxy") or str(ex).__contains__("Forbidden for url"):
                         if i>50:
                             break

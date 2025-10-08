@@ -52,20 +52,20 @@ class CaseMineCrawl:
         day = self.end_date.weekday()  # Monday is 0 and Sunday is 6
 
         # Add extra retro months based on the day of the week
-        if day == 5:  # Saturday
-            retro_months.append(-24)
-        elif day == 6:  # Sunday
-            retro_months.append(-36)
+        # if day == 5:  # Saturday
+        #     retro_months.append(-24)
+        # elif day == 6:  # Sunday
+        #     retro_months.append(-36)
         # Initialize date ranges dictionary
         date_ranges = {}
         # Populate date ranges based on the day of the week
         if day == 6:  # Sunday
-            self.start_date = self.end_date - timedelta(days=7)
-            date_ranges[self.start_date] = self.end_date
+            # self.start_date = self.end_date - timedelta(days=7)
+            date_ranges[self.start_date] = self.crawled_till
         elif day == 0:  # Monday
-            self.start_date = self.end_date - timedelta(days=14)
-            monday_end_date = self.end_date - timedelta(days=7)
-            date_ranges[self.start_date] = monday_end_date
+            # self.start_date = self.end_date - timedelta(days=14)
+            # monday_end_date = self.end_date - timedelta(days=7)
+            date_ranges[self.start_date] = self.crawled_till
         else:
             crawlled_till = datetime.strptime(crawled_till, "%d/%m/%Y")
             date_ranges[crawlled_till] = self.end_date
@@ -80,7 +80,8 @@ class CaseMineCrawl:
         # Crawl all date ranges
         count = 0
         for self.start_date, self.end_date in date_ranges.items():
-            count = count + self.crawling_range(self.start_date, self.end_date)
+            # print(f"{datetime.strptime(self.crawled_till,'%d/%m/%Y')} --> {datetime.now()}")
+            count = count + self.crawling_range( datetime.strptime(self.crawled_till,"%d/%m/%Y"), datetime.now())
             # count=count+self.crawling_range(datetime(2025,1,1),datetime.today())
         return count
 

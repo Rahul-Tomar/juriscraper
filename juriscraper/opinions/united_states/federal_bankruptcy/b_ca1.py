@@ -1,9 +1,11 @@
-from datetime import date, datetime, timedelta
-import json
+from datetime import datetime
+
 import requests
+from typing_extensions import override
 
 from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
+
 
 class Site(OpinionSiteLinear):
 
@@ -47,6 +49,14 @@ class Site(OpinionSiteLinear):
         self.url=f'https://www.bap1.uscourts.gov/bapopn?opn=&field_opn_short_title_value=&field_opn_issdate_value%5Bmin%5D%5Bdate%5D={sdate}&field_opn_issdate_value%5Bmax%5D%5Bdate%5D={edate}'
         self.parse()
         return 0
+
+    @override
+    def _request_url_get(self, url):
+        # header = {
+        #     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"}
+        self.proxies = {
+            'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050', }
+        self.request["response"] = requests.get(url=url,  proxies=self.proxies, verify=self.request["verify"], timeout=120, )
 
     def get_class_name(self):
         return "b_ca1"

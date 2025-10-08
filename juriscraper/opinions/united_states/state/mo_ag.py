@@ -24,13 +24,17 @@ class Site(OpinionSiteLinear):
             opinion = row.xpath('./td[1]//a/text()')
             link = row.xpath('./td[1]//a/@href')
             date = row.xpath('string(./td[2])').replace("\n","")
-
+            new_date = f"{date}, {self.current_year}"
+            curr_date = datetime.strptime(new_date, "%b %d, %Y").strftime("%d/%m/%Y")
+            res = CasemineUtil.compare_date(self.crawled_till, curr_date)
+            if res == 1:
+                return
 
             topic = row.xpath('./td[3]//text()')
             summary = row.xpath('./td[4]/text()')
             # print(f"{date}, {self.current_year}")
             self.cases.append({
-                'date': f"{date}, {self.current_year}",
+                'date': new_date,
                 "docket":opinion,
                 'name': ' '.join([t.strip() for t in topic if t.strip()]),
                 "url":link[0] if link else '',

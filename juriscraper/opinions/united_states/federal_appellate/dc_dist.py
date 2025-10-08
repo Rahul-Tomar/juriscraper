@@ -80,10 +80,11 @@ class Site(OpinionSiteLinear):
         download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
         os.makedirs(path, exist_ok=True)
         try:
+            us_proxy = CasemineUtil.get_us_proxy()
             response = requests.get(url=pdf_url,
                                     headers={"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"},
-                                    proxies={"http": "p.webshare.io:9999",
-                                             "https": "p.webshare.io:9999"},
+                                    proxies={ 'http': f'http://{us_proxy.ip}:{us_proxy.port}',
+                    'https': f'http://{us_proxy.ip}:{us_proxy.port}'},
                                     timeout=120)
             response.raise_for_status()
             with open(download_pdf_path, 'wb') as file:

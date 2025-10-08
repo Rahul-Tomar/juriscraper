@@ -34,10 +34,6 @@ class Site(OpinionSiteLinear):
         self.cases = []
 
     def _process_html(self) -> None:
-        """Process the html and extract out the opinions
-
-        :return: None
-        """
         for item in self.html["searchItems"]:
             match = re.search(self.title_re, item["title"])
 
@@ -50,9 +46,9 @@ class Site(OpinionSiteLinear):
                 name = ""
                 continue
             self.cases.append({
-                "date": item["displayDate"],
+                "date": item["filingDate"],
                 "docket": [docket],
-                "name": name,
+                "name": name.replace(" V "," v. "),
                 "url": f"https://www.courts.michigan.gov{item['documentUrl'].strip()}",
                 "lower_court": self.get_lower_courts(item["courts"]),
                 "disposition": item["title"],

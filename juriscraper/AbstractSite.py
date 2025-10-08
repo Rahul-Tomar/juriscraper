@@ -1,13 +1,11 @@
 import hashlib
 import json
 from datetime import date, datetime
-from time import sleep
 from typing import Dict, List, Tuple
 
 import certifi
 import requests
 from casemine.CaseMineCrawl import CaseMineCrawl
-from casemine.casemine_util import CasemineUtil
 from juriscraper.lib.date_utils import (
     fix_future_year_typo,
     json_date_handler,
@@ -63,11 +61,16 @@ class AbstractSite(CaseMineCrawl):
         self.back_scrape_iterable = None
         self.downloader_executed = False
         self.cookies = {}
+        self.proxies = {
+            "http": "http://192.126.183.255:8800",
+            "https": "http://192.126.183.255:8800"
+        }
+
         self.cnt = cnt or CaseNameTweaker()
         self.request = {
             "verify": certifi.where(),
             "session": requests.session(),
-            "headers": {"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"},
+            "headers": {"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/136.0"},
             # Disable CDN caching on sites like SCOTUS (ahem)
             "cache-control": "no-cache, no-store, max-age=1",
             "parameters": {},
@@ -346,43 +349,19 @@ class AbstractSite(CaseMineCrawl):
             for k, v in self.parameters.items():
                 truncated_params[k] = trunc(v, 50, ellipsis="...[truncated]")
             logger.info(
-                "Now downloading case page at: %s (params: %s)"% (self.url, truncated_params))
+                "Now downloading case page at: %s (params: %s)"
+                % (self.url, truncated_params)
+            )
         else:
             logger.info(f"Now downloading case page at: {self.url}")
         self._process_request_parameters(request_dict)
-        i=0
-        while True:
-            try:
-                # Getting new us proxy
-                us_proxy = CasemineUtil.get_us_proxy()
-                # print(us_proxy)
-                # Setting in proxies header
-                self.proxies = {
-                    "http": f"{us_proxy.ip}:{us_proxy.port}",
-                    "https": f"{us_proxy.ip}:{us_proxy.port}",
-                }
-                if self.method == "GET":
-                    self._request_url_get(self.url)
-                    self._post_process_response()
-                    break
-                elif self.method == "POST":
-                    self._request_url_post(self.url)
-                    self._post_process_response()
-                    break
-                elif self.test_mode_enabled():
-                    self._request_url_mock(self.url)
-                    self._post_process_response()
-                    break
-            except Exception as ex:
-                if str(ex).__contains__("Unable to connect to proxy") or str(ex).__contains__("Forbidden for url") or str(ex).__contains__("Read timed out"):
-                    # print(f"{i} - {us_proxy} || {str(ex)}")
-                    i+=1
-                    if i>10:
-                        break
-                    else:
-                        continue
-                else:
-                    raise ex
+        if self.method == "GET":
+            self._request_url_get(self.url)
+        elif self.method == "POST":
+            self._request_url_post(self.url)
+        elif self.test_mode_enabled():
+            self._request_url_mock(self.url)
+        self._post_process_response()
         return self._return_response_text_object()
 
     def _process_html(self):
@@ -458,6 +437,7 @@ class AbstractSite(CaseMineCrawl):
                         fix_links_in_lxml_tree, base_href=self.request["url"]
                     )
                 return html_tree
+        return None
 
     def _get_html_tree_by_url(self, url, parameters={}):
         self._process_request_parameters(parameters)

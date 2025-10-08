@@ -7,6 +7,7 @@ DATABASE_NAME = 'juriscraper'
 TEST_COLLECTION = 'test'
 MAIN_COLLECTION = 'JuriscraperData'
 CONFIG_COLLECTION = 'JuriscrapperCrawlConfig'
+ACTS_COLLECTION = 'us_acts'
 
 MAIN_PDF_PATH="/synology/PDFs/US/juriscraper/"
 TEMP_PDF_PATH="/home/gaugedata/Downloads/juriscraper/"

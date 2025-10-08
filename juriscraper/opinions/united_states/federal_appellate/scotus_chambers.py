@@ -102,8 +102,16 @@ class Site(OpinionSite):
                 # for revision_data in case["revisions"]:
                 #     revision = case.copy()
                 case["Date"] = case["Date"]
-                case["Name_Url"] = case["href"]
-                self.cases.append(case['revision'])
+                try:
+                    case["Name_Url"] = case["href"]
+                except Exception as e:
+                    # print(e)
+                    if str(e).__contains__("href"):
+                        case["Name_Url"] = case["Name_Url"]
+                    else:
+                        raise e
+
+                self.cases.append(case['revisions'])
 
     def extract_case_data_from_row(self, row):
         cell_index = 0
@@ -144,16 +152,25 @@ class Site(OpinionSite):
         return case
 
     def _get_case_names(self):
-        return [case["Name"] for case in self.cases]
+        names = []
+        for case in self.cases:
+            if list(case).__len__() == 0:
+                continue
+            else:
+                names.append(case["Name"])
+        #         return [case["Name"] for case in self.cases]
+        return names
 
     def _get_download_urls(self):
         name_urls = []
         for case in self.cases:
-            pdf_url = str(case["Name_Url"])
-            if not pdf_url.__contains__(""):
-                pdf_url = "https://www.supremecourt.gov"+pdf_url
-
-            name_urls.append(pdf_url)
+            if list(case).__len__()==0:
+                continue
+            else:
+                pdf_url = str(case["Name_Url"])
+                if not pdf_url.__contains__(""):
+                    pdf_url = "https://www.supremecourt.gov"+pdf_url
+                name_urls.append(pdf_url)
         return name_urls
 
     def _get_case_dates(self):
@@ -161,21 +178,46 @@ class Site(OpinionSite):
         # Iterate over each case in self.cases
         for case in self.cases:
             # Apply the convert_date_string function to the date and append the result to the list
-            converted_date = convert_date_string(case["Date"])
+            # print(case)
+            if list(case).__len__()==0:
+                continue
+            case_date = case["Date"]
+            converted_date = convert_date_string(case_date)
             converted_dates.append(converted_date)
         return converted_dates
 
     def _get_docket_numbers(self):
-        return [case["Docket"] for case in self.cases]
+        dockets = []
+        for case in self.cases:
+            if list(case).__len__() == 0:
+                continue
+            else:
+                dockets.append(case["Docket"])
+        # return [case["Docket"] for case in self.cases]
+        return dockets
 
     def _get_citations(self):
-        return [case["citations"] for case in self.cases]
+        citations = []
+        for case in self.cases:
+            if list(case).__len__() == 0:
+                continue
+            else:
+                citations.append(case["citations"])
+        # return [case["citations"] for case in self.cases]
+        return citations
 
     def _get_judges(self):
-        return [case["judge"] for case in self.cases]
+        judges=[]
+        for case in self.cases:
+            if list(case).__len__()==0:
+                continue
+            else:
+                judges.append(case["judge"])
+        # return [case["judge"] for case in self.cases]
+        return judges
 
     def _get_precedential_statuses(self):
-        return [self.precedential] * len(self.cases)
+        return [self.precedential] * (int(len(self.cases)/2))
 
     def _download_backwards(self, d):
         self.yy = str(d if d >= 10 else f"0{d}")

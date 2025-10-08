@@ -198,16 +198,17 @@ class Site(OpinionSiteLinear):
                 except Exception as e:
                     logger.info(f"inside the exception block in okla class ..... {e}")
 
-                print("-------------------------------------------------------------------------------------------------------------------")
-
-
+                # print("-------------------------------------------------------------------------------------------------------------------")
+                cit_arr=[]
+                if citation is not None:
+                    cit_arr.append(citation)
 
                 self.cases.append(
                     {
                         "date": date,
                         "name": name,
                         "docket": [docket],
-                        "citation": [citation],
+                        "citation": cit_arr,
                         "url": pdf_url,
                         "cite_info_html":cite_html,
                         "html_url":url,

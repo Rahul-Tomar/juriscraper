@@ -18,6 +18,9 @@ History:
 import re
 from datetime import datetime
 
+import requests
+from typing_extensions import override
+
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 
@@ -36,6 +39,8 @@ class Site(OpinionSiteLinear):
         self.request["headers"] = {
             "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
         }
+        self.proxies = {
+            'http': 'http://104.223.126.101:8800', 'https': 'http://104.223.126.101:8800', }
         self.needs_special_headers = True
 
     def _process_html(self):
@@ -56,6 +61,10 @@ class Site(OpinionSiteLinear):
                 if not date:
                     # if no date is found skip it
                     continue
+
+            if not str(url).__contains__("https://www.mass.gov/"):
+                url="https://www.mass.gov/"+url
+            # print(url)
             self.cases.append(
                 {
                     "name": name,
@@ -65,6 +74,20 @@ class Site(OpinionSiteLinear):
                     "url": url,
                 }
             )
+
+    @override
+    def _request_url_get(self, url):
+        """Execute GET request and assign appropriate request dictionary
+        values
+        """
+        self.request["response"] = requests.get(
+            url=url,
+            # headers=self.request["headers"],
+            verify=self.request["verify"],
+            proxies=self.proxies,
+            timeout=60,
+        )
+
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.parse()
         return 0

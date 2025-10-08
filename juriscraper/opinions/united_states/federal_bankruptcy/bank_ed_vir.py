@@ -101,8 +101,8 @@ class Site(OpinionSiteLinear):
         self.session = requests.session()
         self.base_pdf ="https://www-a.vaeb.uscourts.gov/opinions/VAADIN/dynamic/resource"
         self.proxies = {
-            "http": "http://23.226.137.155:8800",
-            "https": "http://23.226.137.155:8800"
+            "http": "http://66.63.171.8:8800",
+            "https": "http://66.63.171.8:8800"
         }
 
     def extract_case_title(self,summary: str) -> str:

@@ -15,6 +15,8 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         self.url = f"https://www.courts.ca.gov/cms/opinions.htm?Courts={self.court_code}"
         self.status = "Published"
+        self.proxies = {
+            "http": "http://104.223.126.101:8800", "https": "http://104.223.126.101:8800"}
         self.request["verify"] = False
 
     def _process_html(self) -> None:
@@ -28,6 +30,9 @@ class Site(OpinionSiteLinear):
                 case_name = split
 
             url = row.xpath(".//a[@class='op-link']/@href")[0]
+            if not str(url).__contains__("https://www4.courts.ca.gov"):
+                url = "https://www4.courts.ca.gov"+url
+
             date_filed = row.xpath(".//*[@class='op-date']/text()")[0]
             curr_date = datetime.strptime(date_filed, "%b %d, %Y").strftime("%d/%m/%Y")
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)

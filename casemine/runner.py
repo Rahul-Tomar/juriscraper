@@ -2,13 +2,12 @@ import ast
 from datetime import datetime
 
 from casemine.casemine_util import CasemineUtil
-from juriscraper.opinions.united_states.federal_bankruptcy import bank_dc
-from juriscraper.opinions.united_states.federal_district import md_ala
-from juriscraper.opinions.united_states.state import ark_admin_law, ark_work_comp, la_ag, mo_ag, neb_ag, wash_ag
+from juriscraper.opinions.united_states.state import arkctapp, mich_orders, ny_new, nyappdiv1_motions, nyappdiv2_motions, nyappdiv4_motions, nyappdiv_1st_new, nyappdiv_2nd_new, nyappdiv_3rd_new, nyappdiv_4th_new, nyappterm1_motions, nyappterm_1st_new, nyappterm_2nd_new, nycivil_motions, nycrim_motions
 
-site = bank_dc.Site()
+# Create a site object
+site = arkctapp.Site()
 
-site.execute_job("bank_dc")
+site.execute_job("arkctapp")
 
 # print(f"Total judgements: {site.cases.__len__()}")
 

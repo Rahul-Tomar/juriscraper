@@ -81,7 +81,7 @@ class Site(OpinionSite):
             return None
         else:
             page_link = a_tag.attrs.get('href')
-            if page_link.__contains__('https://ww3.ca2.uscourts.gov/'):
+            if page_link.__contains__('https://ww3.ca2.uscourts.gov/') or page_link.__contains__('http://ww3.ca2.uscourts.gov/') or page_link.__contains__('http://www.ca2.uscourts.gov/'):
                 return page_link
             else:
                 page_link = "https://ww3.ca2.uscourts.gov/" + page_link
@@ -111,7 +111,7 @@ class Site(OpinionSite):
                     date_filed = date.fromtimestamp(time.mktime(time.strptime(dt, "%m-%d-%Y")))
                     date_obj = date_filed.strftime('%d/%m/%Y')
                     self.dates.append(date_filed)
-                    res = CasemineUtil.compare_date(date_obj, self.crawled_till)
+                    res = CasemineUtil.compare_date(self.crawled_till, date_obj)
                     if res == 1:
                         self.crawled_till = date_obj
                         flag=False
@@ -124,7 +124,12 @@ class Site(OpinionSite):
 
                 url_node = self.html.xpath("//table/td/b/a/@href")
                 for url in url_node:
-                    self.urls.append(url)
+                    # print(url)
+                    if not str(url).startswith("http"):
+                        url = "https://ww3.ca2.uscourts.gov/" + url
+                        self.urls.append(url)
+                    else:
+                        self.urls.append(url)
 
                 # status
                 for s in self.html.xpath("//table/td[4]/text()"):

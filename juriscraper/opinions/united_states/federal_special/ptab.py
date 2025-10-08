@@ -3,6 +3,7 @@ from datetime import datetime
 import requests
 from typing_extensions import override
 
+from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 class Site(OpinionSiteLinear):
@@ -55,7 +56,10 @@ class Site(OpinionSiteLinear):
         }
         new_url = str(url).split("||")[0]
         data = str(url).split("||")[1]
-        self.request["response"] = requests.post(url=new_url, headers=headers, verify=self.request["verify"], data=data, proxies=self.proxies, timeout=60)
+        us_proxy = CasemineUtil.get_us_proxy()
+
+        self.request["response"] = requests.post(url=new_url, headers=headers, verify=self.request["verify"], data=data, proxies={ 'http': f'"http://38.152.199.134:8800"',
+                    'https': f'"http://38.152.199.134:8800"'}, timeout=60)
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.url='https://developer.uspto.gov/ptab-api/decisions/json'
