@@ -18,6 +18,8 @@ class Site(OpinionSiteLinear):
         self.status = "Published"
         self.court = "Supreme Court"
         self.last_date=None
+        self.proxies = {
+            'http': 'http://104.223.126.101:8800', 'https': 'http://104.223.126.101:8800', }
 
     def _update_parameters(self, page):
         # view_state = self.html.xpath("//input[@id='__VIEWSTATE']")[0].get("value")

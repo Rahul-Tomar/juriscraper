@@ -7,6 +7,8 @@ import time
 from datetime import date, datetime
 
 from lxml import html
+import requests
+from typing_extensions import override
 
 from juriscraper.OpinionSite import OpinionSite
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
@@ -114,7 +116,10 @@ class Site(OpinionSiteLinear):
 
     def _process_html(self):
         for t in self.html.xpath(f"{self.base}/td[1]/a/@href"):
-            self.case_urls.append(t)
+            if not str(t).__contains__("https://www.cit.uscourts.gov"):
+                self.case_urls.append("https://www.cit.uscourts.gov"+t)
+            else:
+                self.case_urls.append(t)
 
         for t in self.html.xpath(f"{self.base}/td[6][../td/a]/text()"):
             self.case_suits.append(t)
@@ -161,6 +166,14 @@ class Site(OpinionSiteLinear):
             self.parse()
             self.downloader_executed=False
         return 0
+
+    @override
+    def _request_url_get(self, url):
+        prox={
+                    'http': "http://38.152.199.134:8800",
+                    'https': "http://38.152.199.134:8800"
+                }
+        self.request["response"] = requests.get(url=url, proxies=prox, verify=self.request["verify"], timeout=120, )
 
     def get_class_name(self):
         return "cit"

@@ -1,7 +1,3 @@
-# Author: Phil Ardery
-# Date created: 2017-01-27
-# Contact: 501-682-9400 (Administrative Office of the Curt)
-
 import re
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, Optional, Tuple
@@ -9,8 +5,7 @@ from urllib.parse import urlencode
 
 from dns.name import empty
 from lxml import html
-import \
-    requests
+import requests
 
 from casemine.casemine_util import CasemineUtil
 from juriscraper.AbstractSite import logger
@@ -53,15 +48,12 @@ class Site(OpinionSiteLinear):
 
             cite = item.xpath(".//*[@class='citation']/text()")
             docket_url = item.xpath(".//a/@href")[0]+"?iframe=true"
-            response = requests.get(url=docket_url, headers={"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"}, proxies={"http": "p.webshare.io:9999", "https": "p.webshare.io:9999"}, timeout=120)
+            response = requests.get(url=docket_url, headers={"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"}, proxies={"http'": "socks5h://127.0.0.1:9050", "https": "socks5h://127.0.0.1:9050"}, timeout=120)
             html_tree = self._make_html_tree(response.text)
             docket=[]
             docket_data = html_tree.xpath("//tr[td[@class='label' and text()='Docket Number']]/td[@class='metadata']/text()")
             if list(docket_data).__len__()!=0:
                 docket.append(docket_data[0].strip())
-
-            if cite:
-                cite = cite[0]
 
             if metadata := item.xpath(".//*[@class='subMetadata']/span[2]"):
                 per_curiam = metadata[0].text_content().strip() == "Per Curiam"
@@ -71,14 +63,14 @@ class Site(OpinionSiteLinear):
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
             if res == 1:
                 return
-            if self.cases.__contains__({"date": date_filed, "docket": [], "name": titlecase(name), "citation": [cite], "url": url, "status": "Published", "per_curiam": per_curiam}):
+            if self.cases.__contains__({"date": date_filed, "docket": [], "name": titlecase(name), "citation": cite, "url": url, "status": "Published", "per_curiam": per_curiam}):
                 return
             self.cases.append(
                 {
                     "date": date_filed,
                     "docket": docket,
                     "name": titlecase(name),
-                    "citation": [cite],
+                    "citation": cite,
                     "url": url,
                     "status": "Published",
                     "per_curiam": per_curiam,

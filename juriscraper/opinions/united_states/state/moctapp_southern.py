@@ -35,10 +35,14 @@ class Site(mo.Site):
                 if len(case_metadata) != 6:
                     continue
                 docket, name, _, author, _, vote = case_metadata
+                docket = docket[:-1].replace("(Mtn Rehearing and Transfer)","").replace("(consolidated)","").strip()
+                docs = str(docket).split(" and ")
+                if not str(url).__contains__("https://www.courts.mo.gov"):
+                    url = "https://www.courts.mo.gov" + url
                 self.cases.append(
                     {
                         "name": name,
-                        "docket": docket[:-1],
+                        "docket": docs,
                         "url": url,
                         "date": date,
                         "disposition": vote.split(".")[0].strip(),

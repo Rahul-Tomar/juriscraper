@@ -11,6 +11,9 @@ class Site(OpinionSiteLinear):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.status = "Published"
+        self.proxies = {
+            "http": "http://192.126.183.255:8800",
+            "https": "http://192.126.183.255:8800"}
 
     def check_len(self, field):
         if list(field).__len__()==0:

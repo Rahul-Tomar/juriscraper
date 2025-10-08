@@ -60,9 +60,14 @@ class Site(OpinionSiteLinear):
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
             if res == 1:
                 return
+
+            pdf_url = url[0]
+
+            if not str(pdf_url).__contains__("https://supremecourt.flcourts.gov"):
+                pdf_url = "https://supremecourt.flcourts.gov" + pdf_url
             self.cases.append(
                 {
-                    "url": url[0],
+                    "url": pdf_url,
                     "docket": new_doc,
                     "name": name,
                     "date": curr_date,

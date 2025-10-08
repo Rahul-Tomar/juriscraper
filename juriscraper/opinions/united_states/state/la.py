@@ -19,7 +19,7 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.year = date.today().year
-        self.url = "https://www.lasc.org/CourtActions/2025"#"http://www.lasc.org/CourtActions/%d" % self.year
+        self.url = "http://www.lasc.org/CourtActions/%d" % self.year
         self.status = "Published"
 
     def _download(self, request_dict={}):
@@ -72,6 +72,14 @@ class Site(OpinionSiteLinear):
                         judges.append(self._get_judge_above_anchor(anchor))
 
                     url = f"http://www.lasc.org{anchor.get('href')}"
+
+                    # if not str(url).__contains__("https://www.lasc.org"):
+                    #     url = "https://www.lasc.org" + url
+
+                    # print(date)
+                    # print(titlecase(parts[1]))
+                    # print(url)
+                    # print("----------------------------")
 
                     self.cases.append(
                         {

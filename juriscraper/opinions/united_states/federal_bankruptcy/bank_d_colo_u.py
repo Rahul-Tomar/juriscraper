@@ -37,6 +37,7 @@ def extract_case_info(text):
             0).strip()
 
     return None, None
+
 class Site(bank_d_colo.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

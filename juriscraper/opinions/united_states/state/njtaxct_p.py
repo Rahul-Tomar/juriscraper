@@ -45,6 +45,9 @@ class Site(nj.Site):
                 ".//div[@class='col-lg-12 small text-muted mt-2']/text()"
             )[0]
 
+            if not str(url).__contains__("https://www.njcourts.gov"):
+                url="https://www.njcourts.gov"+url
+                
             case = {
                 "date": date,
                 "docket": [docket],

@@ -48,6 +48,7 @@ class Site(OpinionSiteLinear):
         # self._set_parameters()
         self.expected_content_types = ["application/pdf", "text/html"]
         self.make_backscrape_iterable(kwargs)  # set_api_token_header(self)
+        self.prox="http://104.223.126.101:8800"
 
     def _set_parameters(self, start_date: Optional[date] = None,
         end_date: Optional[date] = None, ) -> None:
@@ -162,9 +163,31 @@ class Site(OpinionSiteLinear):
         self.downloader_executed = True
 
         try:
-            driver=self.set_selenium_driver()
-            driver.get(
-                "https://iapps.courts.state.ny.us/lawReporting/Search?searchType=all")  # Replace with your form page URL
+            retries = 5
+            retry = 0
+            options = webdriver.ChromeOptions()
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36")
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument(f"--proxy-server={self.prox}")
+
+            service = Service(ChromeDriverManager().install())
+
+            max_retries = 5
+            for attempt in range(max_retries):
+                driver = webdriver.Chrome(service=service, options=options)
+                driver.get("https://iapps.courts.state.ny.us/lawReporting/Search?searchType=all")
+
+                if "<title>Just a moment...</title>" in driver.page_source:
+                    driver.quit()
+                    time.sleep(3)
+                else:
+                    print("Page loaded successfully")
+                    break
+            else:
+                raise Exception("Failed to bypass Cloudflare after retries")
+
             # Fill out the form fields
             driver.find_element(By.NAME, "rbOpinionMotion").send_keys("opinion")
             driver.find_element(By.NAME, "and_or").send_keys("and")
@@ -318,9 +341,7 @@ class Site(OpinionSiteLinear):
                 options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36")
                 options.add_argument("--disable-blink-features=AutomationControlled")
 
-                # Use proxy as required
-                proxy = "http://p.webshare.io:9999"  # Replace with your proxy
-                options.add_argument(f"--proxy-server={proxy}")
+                options.add_argument(f"--proxy-server={self.prox}")
 
                 # Create a WebDriver instance
                 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
@@ -365,9 +386,7 @@ class Site(OpinionSiteLinear):
                 options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36")
                 options.add_argument("--disable-blink-features=AutomationControlled")
 
-                # Use proxy as required
-                proxy = "http://p.webshare.io:9999"  # Replace with your proxy
-                options.add_argument(f"--proxy-server={proxy}")
+                options.add_argument(f"--proxy-server={self.prox}")
 
                 # Set preferences for downloading PDFs automatically without a prompt
                 prefs = {
@@ -405,7 +424,7 @@ class Site(OpinionSiteLinear):
                         # Try direct download with requests as fallback, still using proxy
                         print("Selenium download failed, trying direct download with requests...")
                         proxies = {
-                            "http": "http://p.webshare.io:9999", "https": "http://p.webshare.io:9999"}
+                            "http": self.prox, "https": self.prox}
                         response = requests.get(pdf_url, stream=True, proxies=proxies)
                         if response.status_code == 200:
                             with open(download_pdf_path, 'wb') as f:
@@ -438,8 +457,7 @@ class Site(OpinionSiteLinear):
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36")
         options.add_argument("--disable-blink-features=AutomationControlled")
 
-        proxy = "http://p.webshare.io:9999"  # Replace with your proxy
-        options.add_argument(f"--proxy-server={proxy}")
+        options.add_argument(f"--proxy-server={self.prox}")
         # Create a WebDriver instance
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         return driver
@@ -453,8 +471,7 @@ class Site(OpinionSiteLinear):
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36")
         options.add_argument("--disable-blink-features=AutomationControlled")
 
-        proxy = "http://p.webshare.io:9999"  # Replace with your proxy
-        options.add_argument(f"--proxy-server={proxy}")
+        options.add_argument(f"--proxy-server={self.prox}")
         # Create a WebDriver instance
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         return driver

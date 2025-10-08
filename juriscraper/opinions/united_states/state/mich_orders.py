@@ -34,9 +34,9 @@ class Site(mich.Site):
             else:
                 docket=[doc]
             self.cases.append({
-                "date": item["displayDate"],
+                "date": item["filingDate"],
                 "docket": docket,
-                "name": item["title"],
+                "name": self.cleanup_case_name( item["title"]).replace(" V "," v. "),
                 "url": f"https://www.courts.michigan.gov{item['documentUrl'].strip()}",
                 "lower_court": self.get_lower_courts(item["courts"])
             })

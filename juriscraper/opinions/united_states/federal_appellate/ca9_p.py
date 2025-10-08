@@ -11,7 +11,6 @@ from datetime import datetime
 import feedparser
 from lxml.html import tostring
 
-from casemine.casemine_util import CasemineUtil
 from juriscraper.lib.string_utils import titlecase
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 

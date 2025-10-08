@@ -6,6 +6,7 @@
 # Date: 2014-07-05
 from datetime import datetime
 
+from casemine.casemine_util import CasemineUtil
 from juriscraper.opinions.united_states.state import okla
 import re
 
@@ -29,13 +30,14 @@ class Site(okla.Site):
 
         for row in self.html.xpath(".//p[@id='document']"):
             pdf_url = ""
-            proxy_manager = ProxyManager()
-            proxy = proxy_manager.get_random_proxy()
+            # proxy_manager = ProxyManager()
+            # proxy = proxy_manager.get_random_proxy()
+            proxy=CasemineUtil.get_us_proxy()
 
             if self.proxy_usage_count >= 4:
                 self.proxies = {
-                    "http": f"http://{proxy[0]}:{proxy[1]}",
-                    "https": f"http://{proxy[0]}:{proxy[1]}",
+                    "http": f"http://{proxy.ip}:{proxy.port}",
+                    "https": f"http://{proxy.ip}:{proxy.port}",
                 }
                 logger.info(f"updated proxy is {self.proxies}")
                 self.proxy_usage_count = 0
@@ -116,7 +118,7 @@ class Site(okla.Site):
                                     self.request["headers"], proxies=self.proxies)
                                     content = get_pdf_html.text
                                     if "OSCN Turnstile" in content or "cf-turnstile" in content:
-                                        print("captcha")
+                                        # print("captcha")
                                         content=self.fetch_oscn_page_with_proxy(full_url, proxy[0], proxy[1])
 
 
@@ -144,23 +146,23 @@ class Site(okla.Site):
 
                                     else:
                                         pdf_url = ""
-                                    print(f"got the pdf url {pdf_url}")
+                                    # print(f"got the pdf url {pdf_url}")
 
                     else:
                         logger.info("no div with calssname container-fluid sized present")
                 except Exception as e:
                     logger.info(f"inside the exception block in okla class ..... {e}")
+                # print("-------------------------------------------------------------------------------------------------------------------")
 
-                print("-------------------------------------------------------------------------------------------------------------------")
-
-
-
+            cit_arr = []
+            if citation is not None:
+                cit_arr.append(citation)
             self.cases.append(
                 {
                     "date": date,
                     "name": name,
                     "docket": [docket],
-                    "citation": [citation],
+                    "citation": cit_arr,
                     "url": pdf_url,
                     "cite_info_html":cite_html,
                     "html_url":url,

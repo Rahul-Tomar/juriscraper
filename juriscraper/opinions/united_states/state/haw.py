@@ -12,6 +12,9 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         self.court_code = "S.Ct"
         self.status = "Published"
+        self.proxies={
+            'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',
+        }
 
     def _process_html(self) -> None:
         """Parse HTML into case objects

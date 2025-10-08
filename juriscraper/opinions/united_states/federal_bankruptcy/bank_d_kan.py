@@ -3,6 +3,8 @@ import re
 from lxml import html
 
 from juriscraper.opinions.united_states.federal_bankruptcy import bank_d_colo
+
+
 def extract_case_and_docket(line):
     # Try pattern with comma or parentheses after docket number
     match = re.match(r'^(.*?),\s*(\d{2}-\d{5})(?:[,\s\(])', line)
@@ -11,6 +13,8 @@ def extract_case_and_docket(line):
         docket = match.group(2).strip()
         return name, docket
     return None, None
+
+
 class Site(bank_d_colo.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -27,6 +31,7 @@ class Site(bank_d_colo.Site):
             url = row.xpath(".//div[@class='views-field views-field-title']/span/a/@href")[0].strip()
             month, day, year = date.split('/')
             case_date = f"{day}/{month}/{year}"
+            dockets = []
 
             if 'Somers' in jud:
                 judge = judge_list[0]
@@ -41,13 +46,20 @@ class Site(bank_d_colo.Site):
 
             name, docket = extract_case_and_docket(text)
 
+            if docket is not None :
+                dockets.append(docket)
+
+            if name is None :
+                continue
+
             self.cases.append({
                 "name": name,
                 "url": url,
-                "docket": [docket],
-                "judge" : [judge],
+                "docket": dockets,
+                "judge": [judge],
                 "date": date,
-            })
+                }
+            )
 
     def get_class_name(self):
         return "bank_d_kan"

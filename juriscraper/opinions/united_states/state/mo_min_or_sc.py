@@ -23,7 +23,7 @@ class Site(OpinionSiteLinear):
         self.url = "https://www.courts.mo.gov/SUP/index.nsf/TheMinutes"
         self.base_url = "https://www.courts.mo.gov"
 
-    def process_html(self,case_html,date):
+    def process_html(self,case_html, date):
 
         for row in case_html.xpath("//form/table"):
             docket=row.xpath(".//tr[2]/td[1]/font/text()")
@@ -39,16 +39,17 @@ class Site(OpinionSiteLinear):
                 content += text.strip()
             date=date
 
-            # print(html.tostring(docket[0],pretty_print=True).decode('UTF-8'))
-            print(docket)
-            print(name)
-            print(url)
-            print(date)
-            print(content)
-            print("-------------------------")
+            self.cases.append({
+                "date":date,
+                "name":name,
+                "docket":docket,
+                "url":url,
+                "summary":content
+            })
+
 
     def getdates(self,start_date , end_date):
-        print(f"finding the minute orders between {start_date} and {end_date}")
+        # print(f"finding the minute orders between {start_date} and {end_date}")
         table = self.html.xpath("//table[@cellpadding='2']")
 
         for row in table[0].xpath(".//tr[@valign='top']/td"):
@@ -57,10 +58,12 @@ class Site(OpinionSiteLinear):
             case_date = datetime.strptime(date_string, "%B %d, %Y")
             if case_date.date()>= start_date and case_date.date()<=end_date:
                 date_url = row.xpath(".//a/@href")[0]
+                if not str(date_url).__contains__("https://www.courts.mo.gov"):
+                    date_url = "https://www.courts.mo.gov" + date_url
 
                 case_html_text = requests.get(date_url,headers=self.request["headers"],proxies=self.proxies)
                 case_html=html.fromstring(case_html_text.text)
-                self.process_html(case_html,case_date.date())
+                self.process_html(case_html,date_string)
 
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:

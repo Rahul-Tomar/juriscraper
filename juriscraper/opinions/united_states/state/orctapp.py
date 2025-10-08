@@ -107,7 +107,7 @@ class Site(OpinionSiteLinear):
                             continue
                         text = item.text_content().strip()
                         text=text.replace("\t"," ")
-                        url = anchors[0].xpath("./@href")[0]
+                        # url = anchors[0].xpath("./@href")[0]
                         docket = anchors[1].text_content().strip()
                         name = text.split(")", 1)[-1].strip()
                         citation = text.split("(", 1)[0].strip()
@@ -115,7 +115,8 @@ class Site(OpinionSiteLinear):
                         pdf_url_id = self.get_pdf_id(docket, name)
                         pdf_url = f"https://cdm17027.contentdm.oclc.org/digital/collection/p17027coll5/id/{pdf_url_id}/rec"
                         response_html = self.get_html_responsd(pdf_url_id)
-
+                        url=f"https://cdm17027.contentdm.oclc.org/digital/api/collection/p17027coll5/id/{pdf_url_id}/download"
+                        # print(pdf_url+" "+url)
                         self.cases.append(
                             {
                                 "date": date_string,

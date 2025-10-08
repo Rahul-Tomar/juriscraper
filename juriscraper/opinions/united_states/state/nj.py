@@ -62,7 +62,8 @@ class Site(OpinionSiteLinear):
             for c in get_docks:
                 docket.append(f"{first}-{c}-{second}")
 
-            print(docket)
+            if not str(url).__contains__("https://www.njcourts.gov"):
+                url="https://www.njcourts.gov"+url
             case = {
                 "date": date,
                 "docket": docket,

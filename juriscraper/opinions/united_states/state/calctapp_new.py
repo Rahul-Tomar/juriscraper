@@ -17,6 +17,8 @@ class Site(OpinionSiteLinear):
         self.set_url_keyword='publishedcitable-opinions'
         self.pattern=r'\b\d{1,2}/\d{1,2}/\d{2,4}\b'
         self.opn_type="Opinion"
+        self.proxies = {
+            'http': 'http://104.223.126.104:8800', 'https': 'http://104.223.126.104:8800', }
 
     def _process_html(self):
         list = self.html.xpath("//ul[@class='stack']/li")
@@ -51,6 +53,11 @@ class Site(OpinionSiteLinear):
             title = li.xpath("string(.//div[@class='result-excerpt__title'])").strip()
             name = re.split(self.pattern, title)[0].strip()
             pdf_url = li.xpath("string(.//a[text()='PDF']/@href)").strip()
+            if str(pdf_url).__contains__("https://"):
+                pdf_url="https://www4.courts.ca.gov"+pdf_url
+
+            pdf_url = pdf_url.replace("https://www.courts.ca.gov","https://www4.courts.ca.gov")
+
             self.cases.append({
                 "date": date,
                 "docket": [docket],

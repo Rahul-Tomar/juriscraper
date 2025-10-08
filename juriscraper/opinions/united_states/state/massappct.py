@@ -9,7 +9,6 @@ Date: 2014-07-12
 History:
     - Update 2023-01-28 by William E. Palin
 """
-
 from juriscraper.opinions.united_states.state import mass
 
 
