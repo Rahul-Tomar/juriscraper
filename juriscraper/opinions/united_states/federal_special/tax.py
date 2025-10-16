@@ -70,7 +70,8 @@ class Site(OpinionSiteLinear):
         Iterate over each item on the page collecting our data.
         return: None
         """
-        for case in self.json:
+        for case in self.json['results']:
+            print(case)
             url = self._get_url(case["docketNumber"], case["docketEntryId"])
             status = (
                 "Published"

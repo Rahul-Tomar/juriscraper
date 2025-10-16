@@ -9,10 +9,11 @@ from casemine.casemine_util import CasemineUtil
 
 FOLDERS_TO_SCAN = ["juriscraper/opinions/united_states/state"]
 RESTRICTED_CLASSES = { # Temporary classes
-   "ariz_2","arizctapp_div_1","colo","coloctapp","ny","nyappdiv_1st","nyappdiv_2nd","nyappdiv_3rd","nyappdiv_4th","nyappterm_1st","nyappterm_2nd",
+   "ariz_2","arizctapp_div_1","colo","coloctapp","ark_ag",
     # permanent classes
     "alacivapp", "alacrimapp", "calag", "haw_beginningofyear", "hawapp_beginningofyear", "ind", "indctapp", "indtc", "mdag", "miss", "miss_beginningofyear", "missctapp", "missctapp_beginningofyear",
-    "minnag", "nytrial", "nyag", "sc", "scctapp", "ala", "masslandct", "or", "ri_dist", "ri_trf_tri", "nytrial","calctapp_u"}
+    "minnag", "nytrial", "nyag", "sc", "scctapp", "ala", "masslandct", "or", "ri_dist", "ri_trf_tri", "nytrial","calctapp_u","ny","nyappdiv_1st","nyappdiv_2nd","nyappdiv_3rd","nyappdiv_4th","nyappterm_1st","nyappterm_2nd",
+}
 
 
 def setup_logging():

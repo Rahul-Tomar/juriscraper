@@ -1,7 +1,6 @@
 from datetime import date, datetime, timedelta
 import json
 import requests
-from typing_extensions import override
 
 from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
@@ -11,10 +10,10 @@ class Site(OpinionSiteLinear):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_code='68f021c4-6a44-4735-9a76-5360b2e8af13'
-        # self.prox = {
-        #     "http": f"{us_proxy.ip}:{us_proxy.port}",
-        #     "https": f"{us_proxy.ip}:{us_proxy.port}",
-        # }
+        self.proxies={
+            "http":"http://192.126.181.216:8800",
+            "https":"http://192.126.181.216:8800"
+        }
 
     def _process_html(self):
         results = self.html['_embedded']['results']

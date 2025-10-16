@@ -18,7 +18,7 @@ class Site(OpinionSiteLinear):
         self.pattern=r'\b\d{1,2}/\d{1,2}/\d{2,4}\b'
         self.opn_type="Opinion"
         self.proxies = {
-            'http': 'http://104.223.126.104:8800', 'https': 'http://104.223.126.104:8800', }
+            'http': 'http://192.126.183.51:8800', 'https': 'http://192.126.183.51:8800', }
 
     def _process_html(self):
         list = self.html.xpath("//ul[@class='stack']/li")
