@@ -94,7 +94,7 @@ class Site(OpinionSite):
             )
             date_string = clean_if_py3(date_string).strip()
             if date_string:
-                date_string = date_string.replace("Sept ", "Sep ").replace(".","")
+                date_string = date_string.replace(".","").replace("Sept ", "September ")
                 match = re.match(r"([A-Za-z]{3}) (\d{1,2}), (\d{4})", date_string)
                 date_obj=''
                 if match:

@@ -49,22 +49,22 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         self.make_backscrape_iterable(kwargs)
 
-    def set_url(self, page_ctr, page_len) -> None:
+    def set_url(self, page_ctr, page_len, start_date, end_date) -> None:
         """Sets URL with appropiate query parameters
 
         :param start: start date
         :param end: end date
         :return None
         """
-        logger.info("Date range %s %s", self.start_date, self.end_date)
+        logger.info("Date range %s %s", start_date, end_date)
         params = {"queryString": "true", "searchFields[0].searchType": "",
                   "searchFields[0].operation": ">=",
-                  "searchFields[0].values[0]": self.start_date.strftime(
+                  "searchFields[0].values[0]": start_date.strftime(
                       "%m/%d/%Y"),
                   "searchFields[0].indexFieldName": "filedDate",
                   "searchFields[1].searchType": "",
                   "searchFields[1].operation": "<=",
-                  "searchFields[1].values[0]": self.end_date.strftime(
+                  "searchFields[1].values[0]": end_date.strftime(
                       "%m/%d/%Y"),
                   "searchFields[1].indexFieldName": "filedDate",
                   "searchFilters[0].indexFieldName": "caseHeader.court",
@@ -189,7 +189,7 @@ class Site(OpinionSiteLinear):
         page_len = 100
         flag = True
         while flag:
-            self.set_url(page_ctr, page_len)
+            self.set_url(page_ctr, page_len, start_date,end_date)
             self.parse()
             json_str = self.html
             data_list = list(json_str['resultItems'])

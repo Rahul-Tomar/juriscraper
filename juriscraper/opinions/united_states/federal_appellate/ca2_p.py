@@ -12,6 +12,8 @@ from datetime import date, timedelta, datetime
 from bs4 import BeautifulSoup
 from dateutil.rrule import DAILY, rrule
 from lxml.etree import tostring
+import requests
+from typing_extensions import override
 
 from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSite import OpinionSite
@@ -29,6 +31,9 @@ class Site(OpinionSite):
         super().__init__(*args, **kwargs)
         self.interval = 30
         self.court_id = self.__module__
+        self.proxies = {
+            "http": "http://192.126.181.216:8800", "https": "http://192.126.181.216:8800"}
+        self.data=None
         self.back_scrape_iterable = [i.date() for i in
             rrule(DAILY, interval=self.interval, dtstart=date(2007, 1, 1),
                 until=date(2015, 1, 1), )]
@@ -58,6 +63,14 @@ class Site(OpinionSite):
             # function from being run a second time by the parse method.
             self.status = 200
 
+    @override
+    def _request_url_post(self, url):
+        headers = {
+            "Host": "ww3.ca2.uscourts.gov", "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0", "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.5", "Accept-Encoding": "gzip, deflate, br, zstd", "Connection": "keep-alive", "Upgrade-Insecure-Requests": "1", "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "same-origin", "Sec-Fetch-User": "?1", "Content-Type": "application/x-www-form-urlencoded", "Priority": "u=0, i", "Pragma": "no-cache", "Cache-Control": "no-cache"}
+        self.request['response'] = requests.post(url=url,headers=headers,proxies=self.proxies,params=self.data)
+        # print(resp.status_code)
+        # print(resp.text)
+
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.url="https://ww3.ca2.uscourts.gov/decisions"
         self.method='POST'
@@ -67,6 +80,7 @@ class Site(OpinionSite):
         sdate = start_date1.split('/')
         edate = end_date1.split('/')
         self.parameters={"opinion":"30","sum_order":"0","IW_DATABASE":"OPN","IW_FIELD_TEXT":"*","IW_FILTER_DATE_AFTER":str(sdate[0])+str(sdate[1])+str(sdate[2]),"IW_FILTER_DATE_BEFORE":str(edate[0])+str(edate[1])+str(edate[2]),"IW_BATCHSIZE":"50","IW_SORT":"-DATE"}
+        self.data=f'opinion=30&sum_order=0&IW_DATABASE=OPN&IW_FIELD_TEXT=*&IW_FILTER_DATE_AFTER={sdate[2]}{sdate[1]}{sdate[0]}&IW_FILTER_DATE_BEFORE={edate[2]}{edate[1]}{edate[0]}&IW_BATCHSIZE=20&IW_SORT=-DATE'
         self.parse()
         return 0
 
@@ -77,6 +91,8 @@ class Site(OpinionSite):
         last_table = tables[-1]
         td_tags = last_table.find_next('tr').find_all_next('td')
         a_tag = td_tags[1].find_next('a')
+        if a_tag is None:
+            return None
         if a_tag.attrs.__contains__('disabled'):
             return None
         else:
@@ -108,6 +124,7 @@ class Site(OpinionSite):
                 # dates
                 date_nodes = self.html.xpath("//table/td[3]/text()")
                 for dt in date_nodes:
+
                     date_filed = date.fromtimestamp(time.mktime(time.strptime(dt, "%m-%d-%Y")))
                     date_obj = date_filed.strftime('%d/%m/%Y')
                     self.dates.append(date_filed)

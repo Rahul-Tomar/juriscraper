@@ -170,8 +170,8 @@ class Site(OpinionSiteLinear):
     @override
     def _request_url_get(self, url):
         prox={
-                    'http': "http://38.152.199.134:8800",
-                    'https': "http://38.152.199.134:8800"
+                    'http': "http://192.126.181.216:8800",
+                    'https': "http://192.126.181.216:8800"
                 }
         self.request["response"] = requests.get(url=url, proxies=prox, verify=self.request["verify"], timeout=120, )
 

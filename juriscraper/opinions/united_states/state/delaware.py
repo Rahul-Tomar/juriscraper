@@ -26,7 +26,7 @@ class Site(OpinionSite):
         # Note that we can't do the usual thing here because 'del' is a Python keyword.
         self.court_id = "juriscraper.opinions.united_states.state.del"
         self.proxies = {
-            'http': 'http://104.223.126.101:8800', 'https': 'http://104.223.126.101:8800',
+            'http': 'http://192.126.183.51:8800', 'https': 'http://192.126.183.51:8800',
         }
 
     def _get_case_dates(self):
