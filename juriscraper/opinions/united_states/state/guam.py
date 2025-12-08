@@ -23,7 +23,7 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         self.status = "Published"  # The year dropdown goes back to 1990, but the Court wasn't  # created until 1996 and there are no opinions posted for  # prior years.  # self.back_scrape_iterable = range(1996, self._year)
         self.proxies = {
-            'http': 'http://192.126.183.51:8800', 'https': 'http://192.126.183.51:8800', }
+            'http': 'http://192.126.184.28:8800', 'https': 'http://192.126.184.28:8800', }
 
     def _process_html(self) -> None:
         """Process HTML into case objects
@@ -62,8 +62,11 @@ class Site(OpinionSiteLinear):
                     docket = docket_match.group(0)
             filtered_docket = docket.replace("(","").replace(")","").replace("consolidated with ","").replace(",","").replace("& ","").replace("and ","").replace("\n","")
             doc_arr = filtered_docket.split(" ")
+            pdf_url = table.xpath(".//a/@href")[0]
+            if not pdf_url.startswith("https://guamcourts.gov/"):
+                pdf_url = "https://guamcourts.gov/" + pdf_url.lstrip("/")
             self.cases.append({
-                "url": table.xpath(".//a/@href")[0],
+                "url": pdf_url,
                 "name": name,
                 "docket": doc_arr,
                 "date": row_date or middle_of_the_year,
@@ -97,7 +100,11 @@ class Site(OpinionSiteLinear):
         self.parameters = {"Year": str(year)}
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        self.url = "https://guamcourts.org/Supreme-Court-Opinions/Supreme-Court-Opinions.asp"
+        # OLd url by deepak
+        # self.url = "https://guamcourts.org/Supreme-Court-Opinions/Supreme-Court-Opinions.asp"
+
+        self.url = "https://guamcourts.gov/Supreme-Court-Opinions/Supreme-Court-Opinions.asp"
+
         for year in range(start_date.year, end_date.year + 1):
             self._year = year
             self.parameters = {"Year": str(self._year)}

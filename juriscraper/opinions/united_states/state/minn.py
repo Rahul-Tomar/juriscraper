@@ -111,6 +111,7 @@ class Site(OpinionSiteLinear):
                 )
 
             url = case.xpath(".//a/@href")[0]
+            # print(url)
             docket = url.split("/")[-1].split("-")[0][2:]
             dock = f"{docket[:3]}-{docket[3:]}"
             self.cases.append(
@@ -139,12 +140,16 @@ class Site(OpinionSiteLinear):
                     }
                 )
                 self.url=f"{self.base}?{urlencode(params)}"
+                print(self.url)
                 count += 1
 
             else:
                 link=self.html.xpath("//div[@class='results-navigation']/ul/li[last()]/a")
                 if link:
-                    self.url=link[0].xpath('.//@href')[0]
+                    next_href = link[0].xpath(".//@href")[0]
+                    self.url = urljoin(self.base,
+                                       next_href)  # ✅ safely combine relative with base
+                    print(f"Next page URL: {self.url}")
                 else:
                     break
 
@@ -154,8 +159,12 @@ class Site(OpinionSiteLinear):
 
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        start_date=datetime(2024,1,1,)
-        end_date=datetime(2024,12,31)
+        # start_date=datetime(2025,11,1,)
+        start_date = datetime(start_date.year, start_date.month, start_date.day)
+        print("starting from " , start_date)
+        # end_date=datetime(2025,11,8)
+        today = datetime.now().date()
+        end_date = datetime(today.year, today.month, today.day)
         self._download_backwards((start_date,end_date))
 
         for attr in self._all_attrs:

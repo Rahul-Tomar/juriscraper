@@ -65,9 +65,12 @@ class Site(OpinionSiteLinear):
                 .text_content()
                 .strip()
             )
+            pdf_url=name_url_span.xpath(".//a/@href")[0]
+            if not pdf_url.startswith("https"):
+                pdf_url="https://www.vermontjudiciary.org/"+pdf_url
             self.cases.append(
                 {
-                    "url": name_url_span.xpath(".//a/@href")[0],
+                    "url": pdf_url,
                     "name": titlecase(name_url_span.text_content()),
                     "date": date_filed,
                     "docket": [docket],

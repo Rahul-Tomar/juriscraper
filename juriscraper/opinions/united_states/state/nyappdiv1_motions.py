@@ -27,6 +27,10 @@ class Site(ny_new.Site):
             text = elem.text_content().strip()
             if text.startswith("Motions Decided"):
                 current_date = text.replace("Motions Decided", "").strip()
+                if '.' in current_date:
+                    current_date = current_date.replace(".",",")
+
+                # parse_date = datetime.strptime(current_date, "%d %B, %Y").strftime("%Y-%m-%d")
                 continue
             if elem.tag == "tr":
                 cells = elem.xpath("./td")
@@ -52,6 +56,8 @@ class Site(ny_new.Site):
                 res = CasemineUtil.compare_date(self.crawled_till, date)
                 if res == 1:
                     continue
+                # print(title)
+                # print(current_date)
 
                 self.cases.append({
                     "name": title, "date": current_date, "status": "Unknown", "url": url, "parallel_citation": [self.to_mongo_format(slip_op)], "docket": docket})  # print(f"{i} - {current_date} || {title} || {docket} || {slip_op} || {judge}")

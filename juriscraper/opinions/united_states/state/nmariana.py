@@ -53,6 +53,9 @@ class Site(OpinionSiteLinear):
         for s in self.html.xpath(".//td/a/@href[contains(., 'pdf')]/../../.."):
             cells = s.xpath(".//td")
             judge_text = cells[3].text_content()
+            pdf_url = s.xpath(".//td/a/@href")[0]
+            if not pdf_url.startswith("https") and pdf_url:
+                pdf_url = "https://www.cnmilaw.org"+pdf_url
             self.cases.append(
                 {
                     "name": cells[0].text_content(),
@@ -60,7 +63,7 @@ class Site(OpinionSiteLinear):
                     "date": cells[2].text_content(),
                     "judge": self._cleanup_judge_names(judge_text),
                     "author": self._fetch_author(judge_text),
-                    "url": s.xpath(".//td/a/@href")[0],
+                    "url": pdf_url,
                     "docket": [],
                 }
             )

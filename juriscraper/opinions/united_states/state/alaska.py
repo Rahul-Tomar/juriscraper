@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Dict, Tuple
-
+from lxml import etree
 from dateutil import parser
 import requests
 from requests.exceptions import ChunkedEncodingError
@@ -49,61 +49,164 @@ class Site(OpinionSiteLinear):
 
     def _process_html(self) -> None:
         if not self.html:
-            logger.info("HTML was not downloaded from source page. Should retry")
+            logger.info(
+                "HTML was not downloaded from source page. Should retry")
             return
-        for table in self.html.xpath("//table"):
-            adate = table.xpath("./preceding-sibling::h5")[0].text_content()
-            if self.is_backscrape and not self.date_is_in_backscrape_range(adate):
+
+        # ---------------- Loop through all tables containing opinions ---------------- #
+        for table in self.html.xpath(
+            "//table[contains(@class, 'cms-opinion-table')]"):
+            # Extract the date of publication from the preceding <h5>
+            adate_elem = table.xpath("./preceding-sibling::h5[1]/b")
+            if not adate_elem:
+                continue
+            adate = adate_elem[0].text_content().strip()
+
+            # Skip dates outside backscrape range
+            if self.is_backscrape and not self.date_is_in_backscrape_range(
+                adate):
                 logger.debug("Backscraper skipping %s", adate)
                 continue
-            for row in table.xpath(".//tr"):
-                if row.text_content().strip():
-                    # skip rows without PDF links in first column
-                    try:
-                        url = get_row_column_links(row, 1)
-                        url=str(url).replace("'","%27")
-                        # print(f"{adate} Main-Pdf - {url}")
-                    except IndexError:
-                        html_url=row.xpath('.//td[@title="Case Number and Link to the Case"]/a/@href')[0]
-                        print(f"{adate} html-url - {html_url}")
-                        retry_flag = True
-                        text = None
-                        while retry_flag:
-                            text = self.hit_retry(html_url)
-                            print("\n\t!! HIT AGAIN !!")
-                            if not str(text).__eq__("HIT AGAIN"):
-                                retry_flag=False
 
-                        if text is not None:
-                            html_tree = self._make_html_tree(text)
-                            url = 'https://appellate-records.courts.alaska.gov' + html_tree.xpath("//table[@class='table cms-case-other-table table-striped']//tr//td[@title='Document Download']/a/@href")[0]
+            # ---------------- Loop through tbody rows only ---------------- #
+            for row in table.xpath(".//tbody/tr"):
+                # ---------------- Extract PDF link safely ---------------- #
+                # print(etree.tostring(row, pretty_print=True).decode())
+                pdf_links = row.xpath('.//td[@title="Document Dowload"]/a/@href')
+                if not pdf_links:
+                    pdf_links = row.xpath(
+                        './/td[@title="Document Download"]/a/@href')
+                html_links = row.xpath('.//td[@title="Case Number and Link to the Case"]/a/@href')
+
+                url = None
+                if pdf_links:
+                    # PDF exists
+                    url = pdf_links[0].replace("'", "%27")
+                elif html_links:
+                    # PDF missing, fallback: hit the HTML case page to get PDF
+                    html_url = html_links[0]
+                    if not html_url.startswith("https"):
+                        html_url = "https://appellate-records.courts.alaska.gov" + html_url
+                    retry_flag = True
+                    text = None
+                    while retry_flag:
+                        text = self.hit_retry(html_url)
+                        print("\n\t!! HIT AGAIN !!")
+                        if str(text) != "HIT AGAIN":
+                            retry_flag = False
+
+                    if text is not None:
+                        html_tree = self._make_html_tree(text)
+                        pdfs = html_tree.xpath(
+                            "//table[@class='table cms-case-other-table table-striped']//tr//td[@title='Document Download']/a/@href"
+                        )
+                        if pdfs:
+                            url = 'https://appellate-records.courts.alaska.gov' + \
+                                  pdfs[0]
                             print(f"{adate} New-Pdf - {url}\n")
 
-                    curr_date = datetime.strptime(adate, "%A, %B %d, %Y").strftime("%d/%m/%Y")
-                    res=CasemineUtil.compare_date(self.crawled_till, curr_date)
-                    if res==1:
-                        return
-                    if self.opinion_type.__eq__("bail orders") or self.opinion_type.__eq__("orders"):
-                        docs = str(get_row_column_text(row, 2)).replace(" ","").split(",")
-                        title=get_row_column_text(row, 3)
-                    else:
-                        docs = str(get_row_column_text(row, 3)).replace(" ","").split(",")
-                        title = get_row_column_text(row, 4)
-                    cite = []
-                    if self.url.__eq__("https://appellate-records.courts.alaska.gov/CMSPublic/Home/Opinions?isCOA=False"):
-                        cite = str(get_row_column_text(row, 5)).split(",")
-                    # print(cite)
+                # ---------------- Extract other row details ---------------- #
+                curr_date = datetime.strptime(adate, "%A, %B %d, %Y").strftime(
+                    "%d/%m/%Y")
+                if CasemineUtil.compare_date(self.crawled_till,
+                                             curr_date) == 1:
+                    return
 
-                    self.cases.append(
-                        {
-                            "date": adate,
-                            "docket": docs,
-                            "name": title,
-                            "citation": cite,
-                            "url": url,
-                            "opinion_type":self.opinion_type
-                        }
-                    )
+                if self.opinion_type in ["bail orders", "orders"]:
+                    docs = str(get_row_column_text(row, 2)).replace(" ",
+                                                                    "").split(
+                        ",")
+                    title = get_row_column_text(row, 3)
+                else:
+                    docs = str(get_row_column_text(row, 3)).replace(" ",
+                                                                    "").split(
+                        ",")
+                    title = get_row_column_text(row, 4)
+
+                cite = []
+                if self.url == "https://appellate-records.courts.alaska.gov/CMSPublic/Home/Opinions?isCOA=False":
+                    cite = str(get_row_column_text(row, 5)).split(",")
+
+                docs = [d.strip() for d in docs if
+                        d.strip()]  # remove leading/trailing spaces & empty items
+                title = title.strip()
+                cite = [c.strip() for c in cite if c.strip()]
+
+                # Fix URL if it doesn't start with full HTTPS
+                if url and not url.startswith("https://"):
+                    url = "https://appellate-records.courts.alaska.gov" + url
+                self.cases.append(
+                    {
+                        "date": adate,
+                        "docket": docs,
+                        "name": title,
+                        "citation": cite,
+                        "url": url,
+                        "opinion_type": self.opinion_type
+                    }
+                )
+
+    #  Gave issue on 24 Nov so commented out and different process html is written above
+    # def _process_html(self) -> None:
+    #     if not self.html:
+    #         logger.info("HTML was not downloaded from source page. Should retry")
+    #         return
+    #     for table in self.html.xpath("//table[contains(@class, 'cms-opinion-table')]"):
+    #         print(table.text)
+    #         adate = table.xpath("./preceding-sibling::h5")[0].text_content()
+    #         if self.is_backscrape and not self.date_is_in_backscrape_range(adate):
+    #             logger.debug("Backscraper skipping %s", adate)
+    #             continue
+    #         for row in table.xpath(".//tr"):
+    #             print(row.text_content().strip())  # prints all text inside the row
+    #             print(etree.tostring(row, pretty_print=True).decode())
+    #         if row.text_content().strip():
+    #                 # skip rows without PDF links in first column
+    #                 try:
+    #                     url = get_row_column_links(row, 1)
+    #                     url=str(url).replace("'","%27")
+    #                     # print(f"{adate} Main-Pdf - {url}")
+    #                 except IndexError:
+    #                     html_url=row.xpath('.//td[@title="Case Number and Link to the Case"]/a/@href')[0]
+    #                     print(f"{adate} html-url - {html_url}")
+    #                     retry_flag = True
+    #                     text = None
+    #                     while retry_flag:
+    #                         text = self.hit_retry(html_url)
+    #                         print("\n\t!! HIT AGAIN !!")
+    #                         if not str(text).__eq__("HIT AGAIN"):
+    #                             retry_flag=False
+    #
+    #                     if text is not None:
+    #                         html_tree = self._make_html_tree(text)
+    #                         url = 'https://appellate-records.courts.alaska.gov' + html_tree.xpath("//table[@class='table cms-case-other-table table-striped']//tr//td[@title='Document Download']/a/@href")[0]
+    #                         print(f"{adate} New-Pdf - {url}\n")
+    #
+    #                 curr_date = datetime.strptime(adate, "%A, %B %d, %Y").strftime("%d/%m/%Y")
+    #                 res=CasemineUtil.compare_date(self.crawled_till, curr_date)
+    #                 if res==1:
+    #                     return
+    #                 if self.opinion_type.__eq__("bail orders") or self.opinion_type.__eq__("orders"):
+    #                     docs = str(get_row_column_text(row, 2)).replace(" ","").split(",")
+    #                     title=get_row_column_text(row, 3)
+    #                 else:
+    #                     docs = str(get_row_column_text(row, 3)).replace(" ","").split(",")
+    #                     title = get_row_column_text(row, 4)
+    #                 cite = []
+    #                 if self.url.__eq__("https://appellate-records.courts.alaska.gov/CMSPublic/Home/Opinions?isCOA=False"):
+    #                     cite = str(get_row_column_text(row, 5)).split(",")
+    #                 # print(cite)
+    #
+    #                 self.cases.append(
+    #                     {
+    #                         "date": adate,
+    #                         "docket": docs,
+    #                         "name": title,
+    #                         "citation": cite,
+    #                         "url": url,
+    #                         "opinion_type":self.opinion_type
+    #                     }
+    #                 )
 
     def make_backscrape_iterable(self, kwargs: Dict) -> None:
         """Checks if backscrape start and end arguments have been passed

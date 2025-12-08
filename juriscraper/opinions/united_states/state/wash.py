@@ -53,11 +53,13 @@ class Site(OpinionSiteLinear):
                 case_info_html = fetch_case_info(info_url,
                                                  self.request["headers"],
                                                  self.proxies)
-
+                pdf_url = middle.xpath("a")[1].get("href")
+                if not pdf_url.startswith('https'):
+                    pdf_url="https://www.courts.wa.gov"+pdf_url
                 self.cases.append(
                     {
                         "date": date.text_content(),
-                        "url": middle.xpath("a")[1].get("href"),
+                        "url":pdf_url ,
                         "name": name.text_content().replace("* ", ""),
                         "docket": [middle.xpath("a")[0].text_content()],
                         "case_info_url": middle.xpath("a")[0].get("href"),

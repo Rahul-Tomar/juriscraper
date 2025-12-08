@@ -21,6 +21,7 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         self.url = "https://superiorcourt.maricopa.gov/departments/superior-court/tax/tax-decisions/"
         self.status = 'Unpublished'
+
     def _process_html(self, start :int , end :int) -> None:
         for divs in self.html.xpath(".//section[@class='container common-accordion xs-custom-container overlap-padding-s section-inner-space']/div[@class='accordion']"):
             for year_divs in divs.xpath(".//div[@class='accordion-item ']"):
@@ -37,6 +38,8 @@ class Site(OpinionSiteLinear):
                             return
                         dock=records.xpath("./a/text()")
                         url=records.xpath("./a/@href")[0]
+                        if not url.startswith("https://superiorcourt.maricopa.gov"):
+                            url = f"https://superiorcourt.maricopa.gov{url}"
 
                         self.cases.append(
                             {

@@ -11,7 +11,7 @@ from typing import Dict, Tuple
 from urllib.parse import urlencode
 
 from lxml import html
-from selenium.webdriver.common.devtools.v85.profiler import start
+# from selenium.webdriver.common.devtools.v85.profiler import start
 
 from juriscraper.AbstractSite import logger
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear

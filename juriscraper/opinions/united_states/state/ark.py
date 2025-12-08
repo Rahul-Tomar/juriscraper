@@ -2,7 +2,7 @@ import re
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlencode
-
+from urllib.parse import urljoin
 from dns.name import empty
 from lxml import html
 import requests
@@ -48,7 +48,14 @@ class Site(OpinionSiteLinear):
 
             cite = item.xpath(".//*[@class='citation']/text()")
             docket_url = item.xpath(".//a/@href")[0]+"?iframe=true"
-            response = requests.get(url=docket_url, headers={"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"}, proxies={"http'": "socks5h://127.0.0.1:9050", "https": "socks5h://127.0.0.1:9050"}, timeout=120)
+            if docket_url.startswith("http://") or docket_url.startswith(
+                "https://"):
+                url = docket_url
+            else:
+                BASE_URL = "https://opinions.arcourts.gov"
+                url = urljoin(BASE_URL, docket_url)
+
+            response = requests.get(url=url, headers={"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"}, proxies={"http": "socks5h://127.0.0.1:9050", "https": "socks5h://127.0.0.1:9050"}, timeout=120)
             html_tree = self._make_html_tree(response.text)
             docket=[]
             docket_data = html_tree.xpath("//tr[td[@class='label' and text()='Docket Number']]/td[@class='metadata']/text()")

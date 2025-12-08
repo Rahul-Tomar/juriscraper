@@ -10,6 +10,8 @@ class Site(kan_p.Site):
         self.court_id = self.__module__
         self.status = "Published"
         self.court = "Court of Appeals"
+        self.filter=1
+        self.courtFilter=20
 
     def get_class_name(self):
         return "kanctapp_p"

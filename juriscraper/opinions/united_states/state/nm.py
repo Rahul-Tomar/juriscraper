@@ -74,6 +74,12 @@ class Site(OpinionSiteLinear):
                 html_url=f"{html_url}?iframe=true"
 
             print(f"\nhitting html {html_url}")
+            if '?iframe=true' not in html_url:
+                html_url = f"{html_url}?iframe=true"
+
+            # If the link is relative (starts with "/"), prepend the base URL
+            if html_url.startswith("/"):
+                html_url = f"https://nmonesource.com{html_url}"
             response = requests.get(url=html_url, proxies=self.proxies, timeout=120)
             response_html = ""
             doc_list = []
@@ -84,17 +90,64 @@ class Site(OpinionSiteLinear):
             new_j_list=[]
             parallal_cite=[]
             updated_response_html = None
-            if response.status_code==200:
+            if response.status_code == 200:
+                print("\n✅ Response received successfully!")
                 response_html = response.text
-                soup = BeautifulSoup(response_html,'html.parser')
+                print(f"🔹 Response length: {len(response_html)} characters")
+
+                soup = BeautifulSoup(response_html, 'html.parser')
+                print("🔹 BeautifulSoup object created")
+
                 meta_div = soup.find('div', id='decisia-main-content')
-                updated_response_html = meta_div.prettify()
+                if meta_div:
+                    print("✅ Found 'decisia-main-content' div")
+                    updated_response_html = meta_div.prettify()
+                else:
+                    print("❌ Could not find 'decisia-main-content' div!")
+                    raise Exception(
+                        "Missing 'decisia-main-content' div in HTML")
+
                 header_div = meta_div.find('div', id="decisia-document-header")
+                if header_div:
+                    print("✅ Found 'decisia-document-header' div")
+                else:
+                    print("❌ Could not find 'decisia-document-header' div!")
+                    print("🔍 Available divs inside meta_div:")
+                    for div in meta_div.find_all("div", recursive=False):
+                        print(
+                            f"    ↳ div id: {div.get('id')}, class: {div.get('class')}")
+                    raise Exception(
+                        "Missing 'decisia-document-header' div in HTML")
+
                 box_content = header_div.find('div', class_="decisia-box")
+                if box_content:
+                    print("✅ Found 'decisia-box' div")
+                else:
+                    print(
+                        "❌ Could not find 'decisia-box' div inside header_div!")
+                    print("🔍 Available divs inside header_div:")
+                    for div in header_div.find_all("div", recursive=False):
+                        print(
+                            f"    ↳ div id: {div.get('id')}, class: {div.get('class')}")
+                    raise Exception("Missing 'decisia-box' div in HTML")
+
                 meta_data = box_content.find('div', class_="metadata")
+                if meta_data:
+                    print("✅ Found 'metadata' div")
+                else:
+                    print(
+                        "❌ Could not find 'metadata' div inside box_content!")
+                    raise Exception("Missing 'metadata' div in HTML")
+
                 table = meta_data.find('table')
-                # meta_tbody = table.find_next("tbody")
+                if table:
+                    print("✅ Found 'table' element inside metadata")
+                else:
+                    print("❌ Could not find 'table' element inside metadata!")
+                    raise Exception("Missing 'table' element in HTML")
+
                 trs = table.find_all("tr")
+                print(f"🔹 Found {len(trs)} table rows")
                 for tr in trs:
                     td = tr.find_all_next('td')[1]
                     if tr.text.__contains__('Parallel Citations'):
@@ -141,6 +194,8 @@ class Site(OpinionSiteLinear):
                 status = "Unknown"
 
             # docket no, htmlurl, html, judges
+            if not url.startswith('https') and url:
+                url = "https://nmonesource.com"+url
             self.cases.append(
                 {
                     "date": date_filed,

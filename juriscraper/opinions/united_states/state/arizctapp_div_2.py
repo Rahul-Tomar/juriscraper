@@ -43,6 +43,8 @@ class Site(OpinionSiteLinear):
             summary_list = item.xpath("./following::tr[1]//text()")
             summary = "".join(summary_list).strip()
             docket=docket.replace(' \r\n', '')
+            if url.startswith("."):
+                url = url.replace("../../","https://www.appeals2.az.gov/")
             self.cases.append(
                 {
                     "name": titlecase(name),

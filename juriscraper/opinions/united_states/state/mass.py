@@ -40,7 +40,7 @@ class Site(OpinionSiteLinear):
             "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
         }
         self.proxies = {
-            'http': 'http://104.223.126.101:8800', 'https': 'http://104.223.126.101:8800', }
+            'http': 'http://192.126.182.41:8800', 'https': 'http://192.126.182.41:8800', }
         self.needs_special_headers = True
 
     def _process_html(self):
@@ -63,7 +63,7 @@ class Site(OpinionSiteLinear):
                     continue
 
             if not str(url).__contains__("https://www.mass.gov/"):
-                url="https://www.mass.gov/"+url
+                url="https://www.mass.gov"+url
             # print(url)
             self.cases.append(
                 {

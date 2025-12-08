@@ -36,7 +36,11 @@ class Site(OpinionSite):
 
     def _get_download_urls(self):
         path = f"{self.path_root}//td[2]/a[1]/@href"
-        return list(self.html.xpath(path))
+        urls = list(self.html.xpath(path))
+        base_url = "https://www.courts.maine.gov/courts/sjc/"
+        full_urls = [base_url + url if not url.startswith("http") else url for
+                     url in urls]
+        return full_urls
 
     def _get_case_names(self):
         case_names = []

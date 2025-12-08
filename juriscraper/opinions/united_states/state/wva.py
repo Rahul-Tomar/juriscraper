@@ -109,6 +109,8 @@ class Site(OpinionSite):
                 anchor = cell.xpath(".//a[1]")
                 if anchor:
                     href = anchor[0].get("href")
+                    if not href.startswith("https"):
+                        href="https://www.courtswv.gov"+href
                     if href: self.urls.append(href)
                     else:
                         self.urls.append("null")

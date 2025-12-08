@@ -34,6 +34,8 @@ class Site(OpinionSiteLinear):
         """
         for row in self.html.xpath("//table//tr[td and not (.//h2)]"):
             url = row.xpath("td//a[contains(@href,'pdf')]/@href")[0]
+            if not url.startswith("https"):
+                url = "https://www.mdcourts.gov"+url
             docket = row.xpath("td[1]//text()")[0]
             date_filed, _, other_date = row.xpath("td[3]/font/text()")[
                 0].partition(" ")

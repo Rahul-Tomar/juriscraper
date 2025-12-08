@@ -55,6 +55,8 @@ class Site(OpinionSiteLinear):
 
             if year < start or year > end:
                 break
+
+
             self.cases.append(
                 {
                     "date": date,

@@ -62,6 +62,8 @@ class Site(OpinionSiteLinear):
                 ".//div[@class='col-md-7 font-bold']/text()"
             )
             path = row.xpath(".//div/div/a/@href")[0]
+            if not path.startswith("https") and path:
+                path="https://128archive.com"+path
             self.cases.append(
                 {
                     "date": date.strip(),

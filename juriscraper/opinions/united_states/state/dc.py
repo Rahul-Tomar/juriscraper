@@ -53,6 +53,8 @@ class Site(OpinionSiteLinear):
             disposition = row.xpath(".//td[4]/text()")[0].strip()
 
             cleaned_list = [item.strip() for item in result]
+            if not url.startswith("http") and url:
+                url = "https://www.dccourts.gov"+url
             self.cases.append(
                 {
                     "date": date_str,

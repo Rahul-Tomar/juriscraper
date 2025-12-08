@@ -9,7 +9,7 @@ from juriscraper.opinions.united_states.state import ohioctcl
 
 
 class Site(ohioctcl.Site):
-    print("inside ohioctcl_beginningofyear")
+    # print("inside ohioctcl_beginningofyear")
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__

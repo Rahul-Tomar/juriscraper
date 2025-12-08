@@ -4,6 +4,7 @@
 
 from datetime import date, datetime, timedelta
 from typing import Optional, Tuple
+import requests
 
 from bs4 import BeautifulSoup
 from lxml import html
@@ -14,113 +15,162 @@ from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 
 class Site(OpinionSiteLinear):
-    # make a backscrape request every `days_interval` range, to avoid pagination
+    # make a backscrape request every `days_interval` range
     days_interval = 20
     first_opinion_date = datetime(1999, 9, 23)
     flag = True
-    # even though you can put whatevere number you want as limit, 50 seems to be max
-    # base_url = "https://www.floridasupremecourt.org/search/?searchtype=opinions&limit=50&startdate={}&enddate={}"
+    fl_court = "supreme_court"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.status = "Published"
-        # self.set_url()
+
+        self.proxy = {
+            "http": "http://192.126.184.28:8800",
+            "https": "http://192.126.184.28:8800",
+        }
+
+        self.data = None
         self.make_backscrape_iterable(kwargs)
 
+    # ----------------------------------------------------------------------
+    # CUSTOM DOWNLOADER
+    # ----------------------------------------------------------------------
+    def _download(self, request_dict={}):
+        """Download JSON with proxy"""
+        response = requests.get(
+            self.url,
+            headers={"User-Agent": "Mozilla/5.0"},
+            proxies=self.proxy,
+            timeout=60
+        )
+        response.raise_for_status()
+        self.data = response.json()
+        return self.data     # ← MUST return JSON object
+
+    # ----------------------------------------------------------------------
+    # PARSER
+    # ----------------------------------------------------------------------
     def _process_html(self) -> None:
-        """Parses HTML into case dictionaries
+        """Convert JSON into case dictionaries"""
 
-        :return: None
-        """
-        path = '//div[@class="search-results"]//tbody/tr'
-        if path is None:
-            self.flag=False
-        for row in self.html.xpath(path):
-            cells = row.xpath("td")
-            url = cells[5].xpath("a/@href")
-            name = cells[3].text_content().strip()
+        results = self.data.get("searchResults", [])
+        total = self.data.get("total", 0)
 
-            if not url or not name:
-                # Skip rows without PDFs or without case names
-                continue
+        print(f"[INFO] Results on this page: {len(results)} / Total: {total}")
 
-            dockets = str(cells[2].text_content().strip())
-            dockets = dockets.replace("&",",")
-            doc_arr=[]
-            if dockets.__contains__(","):
-                doc_arr=dockets.split(',')
+        for item in results:
+            fields = item.get("content", {}).get("fields", {})
+
+            raw_docket = fields.get("case_number", "")
+            docket = self.normalize_docket(raw_docket)
+
+            title = fields.get("case_style", "")
+            disposition = fields.get("note", "")
+
+            pdf_path = fields.get("opinion", {}).get("uri", "")
+            pdf_url = f"https://supremecourt.flcourts.gov{pdf_path}" if pdf_path else ""
+
+            # ---- DATE HANDLING ----
+            raw_date = fields.get("disposition_date", {}).get("date", {}).get("date", "")
+            parsed_date = None
+
+            if raw_date:
+                try:
+                    parsed = datetime.strptime(raw_date, "%Y-%m-%d %H:%M:%S.%f")
+                    parsed_date = parsed.date()
+                except:
+                    try:
+                        parsed = datetime.strptime(raw_date, "%Y-%m-%d")
+                        parsed_date = parsed.date()
+                    except Exception as e:
+                        print(f"[WARN] Could not parse date: {raw_date}, error: {e}")
+
+            # Juriscraper REQUIRES date STRING
+            formatted_date = parsed_date.strftime("%Y-%m-%d") if parsed_date else ""
+            self.cases.append({
+                "docket": docket,
+                "name": title,
+                "disposition":disposition,
+                "date": formatted_date,
+                "url": pdf_url,
+                "status": self.status,
+            })
+
+            # -------- PRINT DEBUG INFO --------
+            print("-------------------------------")
+            print(f"Title      : {title}")
+            print(f"Docket     : {docket}")
+            print(f"Date       : {formatted_date}")
+            print(f"Disposition: {disposition}")
+            print(f"PDF URL    : {pdf_url}")
+            print("-------------------------------")
+
+
+    def normalize_docket(self,docket_field):
+        # Case 1: Already a list
+        if isinstance(docket_field, list):
+            return [d.strip() for d in docket_field if d.strip()]
+
+        # Case 2: It's a single string
+        if isinstance(docket_field, str):
+            # Check if multiple dockets using "&"
+            if "&" in docket_field:
+                parts = docket_field.split("&")
+                return [p.strip() for p in parts if p.strip()]
             else:
-                doc_arr.append(dockets)
+                return [docket_field.strip()]
 
-            new_doc = []
-            for i in doc_arr:
-                new_doc.append(i.strip())
-            curr_date = cells[0].text_content().strip()
-            res = CasemineUtil.compare_date(self.crawled_till, curr_date)
-            if res == 1:
-                return
+        return []  # fallback
 
-            pdf_url = url[0]
 
-            if not str(pdf_url).__contains__("https://supremecourt.flcourts.gov"):
-                pdf_url = "https://supremecourt.flcourts.gov" + pdf_url
-            self.cases.append(
-                {
-                    "url": pdf_url,
-                    "docket": new_doc,
-                    "name": name,
-                    "date": curr_date,
-                    "status": self.status,
-                }
+    # ----------------------------------------------------------------------
+    # BACKSCRAPING
+    # ----------------------------------------------------------------------
+    def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
+        """Main pagination loop"""
+
+        limit = 100
+        offset = 0
+        flag = True
+
+        sdate = start_date.strftime("%Y%m%d")
+        # end_dat = datetime(2025, 10, 15)
+        edate = end_date.strftime("%Y%m%d")
+        # edate = end_dat.strftime("%Y%m%d")
+
+        print(f"[INFO] Crawling from {sdate} to {edate}")
+
+        while flag:
+
+            self.url = (
+                f"https://flcourts-media.flcourts.gov/_search/opinions?"
+                f"query=&siteaccess=supreme2&searchtype=opinions"
+                f"&startdate={sdate}&enddate={edate}"
+                f"&limit={limit}&offset={offset}"
+                f"&type=written&scopes[]={(type(self).fl_court)}"
             )
 
-    def set_url(
-        self, start: Optional[date] = None, end: Optional[date] = None
-    ) -> None:
-        """Sets URL using date arguments
+            print(f"[FETCH] {self.url}")
 
-        If not dates are passed, get 50 most recent opinions
+            self.parse()  # runs _download() and _process_html()
 
-        :param start: start date
-        :param end: end date
-        :return: none
-        """
-        if not start:
-            end = datetime.today()
-            start = end - timedelta(days=365)
+            # Pagination logic based on JSON
+            result_count = len(self.data.get("searchResults", []))
+            total = self.data.get("total", 0)
 
-        fmt = "%m/%d/%Y"
-        # self.url = self.base_url.format(start.strftime(fmt), end.strftime(fmt))
-
-    def _download_backwards(self, dates: Tuple[date]) -> None:
-        """Overrides scraper URL using date inputs
-
-        :param dates: (start_date, end_date) tuple
-        :return None
-        """
-        self.set_url(*dates)
-        logger.info("Backscraping for range %s %s", *dates)
-
-    def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        offset=0
-        sdate=f'{start_date.month}%2F{start_date.day}%2F{start_date.year}'
-        edate=f'{end_date.month}%2F{end_date.day}%2F{end_date.year}'
-        flag=True
-        while flag:
-            self.url=f'https://supremecourt.flcourts.gov/search/opinions/?query=&offset={offset}&view=embed_custom&startDate={sdate}&endDate={edate}&searchType=opinions&scopes%5B0%5D=supreme_court&date%5Bday%5D=&date%5Bmonth%5D=&date%5Byear%5D=&limit=50&sort=opinion%2Fdisposition_date%20desc%2C%20opinion%2Fcase_number%20asc&recentOnly=0&types%5B0%5D=Written&types%5B1%5D=PCA&types%5B2%5D=Citation&activeOnly=0&active_only=0&nonActiveOnly=0&nonactive_only=0&show_scopes=1&hide_search=0&hide_filters=0&siteaccess=supreme&type%5B0%5D=Written&type%5B1%5D=PCA&type%5B2%5D=Citation'
-            self.parse()
-            self.downloader_executed=False
-            offset = offset+50
-            last_li = self.html.xpath('//ul[@class="pagination"]/li[last()]')
-            # Print the last <li> element
-            if list(last_li).__len__() == 0:
+            if offset + limit >= total:
                 flag = False
             else:
-                disabled_li = html.tostring(last_li[0], pretty_print=True).decode()
-                if disabled_li.__contains__('disabled'):
-                    flag = False
+                offset += limit
+
         return 0
+
+    # ----------------------------------------------------------------------
+
+    def set_url(self, start: Optional[date] = None, end: Optional[date] = None):
+        pass
 
     def get_state_name(self):
         return "Florida"

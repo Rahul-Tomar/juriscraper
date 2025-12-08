@@ -3,7 +3,7 @@ from datetime import date, datetime
 from typing import Tuple
 
 from dateutil.parser import parse
-
+from urllib.parse import urlparse
 from casemine.casemine_util import CasemineUtil
 from juriscraper.AbstractSite import logger
 from juriscraper.lib.string_utils import clean_string
@@ -72,9 +72,12 @@ class Site(OpinionSiteLinear):
             if res == 1:
                 return
             dockets, name = self.extract_dockets_and_name(row)
+            pdf_url = row.get("href")
+            if not pdf_url.startswith('http'):
+                pdf_url="https://www.jud.ct.gov/external/supapp/"+pdf_url
             self.cases.append(
                 {
-                    "url": row.get("href"),
+                    "url": pdf_url,
                     "name": name,
                     "docket": dockets.split(', '),
                     "date": date_filed,
@@ -162,6 +165,69 @@ class Site(OpinionSiteLinear):
                 curr_year+=1
                 i += 1
 
+    def _download(self):
+        """
+        Override Juriscraper's default downloader.
+
+        This will download the page using:
+        - cloudscraper
+        - proxy
+        - custom headers + cookies
+        """
+
+        import cloudscraper
+        from lxml import html
+
+        # ---- PROXY ----
+        proxy = "http://192.126.184.28:8800"
+        proxies = {
+            "http": proxy,
+            "https": proxy,
+        }
+
+        # ---- HEADERS ----
+        headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+        }
+
+        # ---- COOKIES ----
+        cookies = {
+            "_ga": "GA1.1.454464960.1744956244",
+            "_ga_B64EXBCE9P": "GS1.1.1744956243.1.1.1744956386.52.0.0",
+            "_hjSessionUser_218205": "eyJpZCI6ImRjZGRiZDg2LTJmNzAtNWIyNC1iNTVlLTgyMDgyOGZkMmFmYSIsImNyZWF0ZWQiOjE3NDQ5NTYyNDQ2MzcsImV4aXN0aW5nIjp0cnVlfQ=="
+        }
+
+        scraper = cloudscraper.create_scraper()
+
+        logger.info(f"Downloading: {self.url}")
+
+        try:
+            resp = scraper.get(
+                self.url,
+                headers=headers,
+                cookies=cookies,
+                proxies=proxies,
+                timeout=60,
+            )
+        except Exception as e:
+            logger.error(f"Cloudscraper failed: {e}")
+            raise
+
+        if resp.status_code != 200:
+            logger.error(f"Bad status {resp.status_code} for URL: {self.url}")
+            raise Exception(f"Failed to download {self.url}")
+
+        # Return parsed HTML tree exactly as Juriscraper expects
+        return html.fromstring(resp.text)
 
     def make_backscrape_iterable(self, kwargs: dict) -> None:
         start = kwargs.get("backscrape_start")
@@ -215,4 +281,3 @@ def clean_extracted_text(text: str) -> str:
 
         clean_lines.append(line)
     return clean_string("\n".join(clean_lines))
-

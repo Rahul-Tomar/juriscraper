@@ -44,6 +44,8 @@ class Site(nj.Site):
 
             docket=doc.split('/')
             # print(docket)
+            if not url.startswith("https"):
+                url="https://www.njcourts.gov"+url
             case = {
                 "date": date,
                 "docket": docket,

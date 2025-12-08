@@ -64,6 +64,7 @@ class Site(OpinionSiteLinear):
                     proxy = CasemineUtil.get_us_proxy()
                     prox = {
                         "http": f"{proxy.ip}:{proxy.port}", "https": f"{proxy.ip}:{proxy.port}", }
+                    print(self.url)
                     response = requests.get(url=self.url,proxies=prox,headers=self.request["headers"],verify = self.request["verify"])
                     self.html = self._make_html_tree(response.text)
                     # print(type(self.html.text))

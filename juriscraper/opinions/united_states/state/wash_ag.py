@@ -19,13 +19,25 @@ class Site(OpinionSiteLinear):
             date = row.xpath('.//div[@class="views-field views-field-field-opinion-date"]//time/text()')[0]
             title = row.xpath('.//div[@class="views-field views-field-title"]//a/text()')[0].strip()
             relative_url = row.xpath('.//div[@class="views-field views-field-title"]//a/@href')[0]
+            if relative_url.startswith("/"):
+                relative_url = f"https://www.atg.wa.gov{relative_url}"
+            elif relative_url.startswith("file:///"):
+                relative_url = relative_url.replace("file://",
+                                                    "https://www.atg.wa.gov")
+
             i = 0
             response = None
             while True:
                 try:
                     us_proxy = CasemineUtil.get_us_proxy()
-                    prox=f"{us_proxy.ip}:{us_proxy.port}"
-                    response = requests.get(url=relative_url,proxies={"http":prox,"https":prox})
+                    proxy_url = f"http://{us_proxy.ip}:{us_proxy.port}"
+                    proxies = {"http": proxy_url, "https": proxy_url}
+
+                    print(f"🔁 Trying proxy: {proxy_url}")
+                    print(relative_url)
+                    response = requests.get(url=relative_url, proxies=proxies,
+                                            timeout=60)
+                    print(f"✅ Response code: {response.status_code}")
                     # print(response.status_code)
                     break
                 except Exception as ex:

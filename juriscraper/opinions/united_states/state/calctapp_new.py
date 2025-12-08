@@ -18,7 +18,7 @@ class Site(OpinionSiteLinear):
         self.pattern=r'\b\d{1,2}/\d{1,2}/\d{2,4}\b'
         self.opn_type="Opinion"
         self.proxies = {
-            'http': 'http://192.126.183.51:8800', 'https': 'http://192.126.183.51:8800', }
+            'http': 'http://192.126.182.41:8800', 'https': 'http://192.126.182.41:8800', }
 
     def _process_html(self):
         list = self.html.xpath("//ul[@class='stack']/li")
@@ -56,7 +56,7 @@ class Site(OpinionSiteLinear):
             if str(pdf_url).__contains__("https://"):
                 pdf_url="https://www4.courts.ca.gov"+pdf_url
 
-            pdf_url = pdf_url.replace("https://www.courts.ca.gov","https://www4.courts.ca.gov")
+            pdf_url = pdf_url.replace("https://www.courts.ca.gov","")
 
             self.cases.append({
                 "date": date,

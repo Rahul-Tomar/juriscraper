@@ -89,7 +89,8 @@ class Site(OpinionSiteLinear):
                     status = "Unpublished"
                 else:
                     status = "Published"
-
+                if not url.startswith("http"):
+                    url = "https://nebraskajudicial.gov"+url
                 self.cases.append(
                     {
                         "date": date,

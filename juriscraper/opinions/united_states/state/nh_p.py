@@ -22,7 +22,8 @@ import re
 from datetime import datetime
 from typing import Dict, List
 from urllib.parse import urlencode, urljoin
-
+from casemine.casemine_util import CasemineUtil
+from playwright.sync_api import sync_playwright
 from juriscraper.AbstractSite import logger
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
@@ -62,7 +63,11 @@ class Site(OpinionSiteLinear):
         self.needs_special_headers = True
         self.make_backscrape_iterable(kwargs)
         self.paginate = False
-
+        temp_date = None
+        self.proxies = {
+            "http": "http://192.126.184.28:8800",
+            "https": "http://192.126.184.28:8800",
+        }
     def _process_html(self) -> None:
         json_response = self.html
 
@@ -87,13 +92,19 @@ class Site(OpinionSiteLinear):
 
             if fields["field_date_filed"]:
                 case_date = fields["field_date_filed"][0]
+                print(case_date)
             elif fields["field_date_posted"]:
                 # usually this is the only populated field
                 case_date = fields["field_date_posted"][0]
+                formatted_date = datetime.strptime(case_date,"%Y-%m-%d").strftime("%d/%m/%Y")
             else:
                 logger.warning(
                     "Skipping row '%s'. No date found", case["title"]
                 )
+                continue
+            # print(self.crawled_till)
+            res = CasemineUtil.compare_date(self.crawled_till, formatted_date)
+            if res == 1:
                 continue
 
             name = case["title"]
@@ -117,7 +128,7 @@ class Site(OpinionSiteLinear):
             name = re.sub(self.docket_regex, " ", name)
             # delete traces of multiple docket numbers
             name = re.sub(r"^(and|[&,])", "", name.strip()).strip()
-
+            # print(urljoin("https://www.courts.nh.gov/sites/g/files/ehbemt471/files/",url))
             self.cases.append(
                 {
                     "date": case_date,
@@ -166,11 +177,63 @@ class Site(OpinionSiteLinear):
         }
         self.url = f"{self.base_url}?{urlencode(params)}"
         self.request["headers"] = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
-            "Sec-Ch-Ua": '"Not)A;Brand";v="99", "Google Chrome";v="127", "Chromium";v="127"',
-            "Referer": f"https://www.courts.nh.gov/our-courts/supreme-court/orders-and-opinions/{self.document_type}/{year}",
-            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+            "Host": "www.courts.nh.gov",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
+            "Cookie": "_ga_QQQTMDJKBH=GS2.1.s1764135560$o6$g1$t1764135583$j37$l0$h0; _ga=GA1.1.1221447934.1744971169",
         }
+
+    def _download(self, request_dict={}):
+        """Download using headless browser to bypass 403"""
+        self.downloader_executed = True
+        logger.info(f"Downloading URL via browser: {self.url}")
+
+        # Get proxy from self.proxies; use HTTPS if available
+        proxy = None
+        if getattr(self, "proxies", None):
+            proxy = self.proxies.get("https") or self.proxies.get("http")
+
+        try:
+            with sync_playwright() as p:
+                browser_args = {"headless": True}
+                if proxy:
+                    browser_args["proxy"] = {"server": proxy}  # <-- set proxy here
+
+                browser = p.firefox.launch(**browser_args)
+                page = browser.new_page()
+                # Set extra headers
+                page.set_extra_http_headers({
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                                  "Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "application/json, text/javascript, */*; q=0.01",
+                    "Accept-Language": "en-US,en;q=0.9",
+                })
+
+                page.goto(self.url, timeout=60000)
+                # Get JSON response from page
+                content = page.evaluate(
+                    "() => document.querySelector('pre')?.innerText || document.body.innerText"
+                )
+                browser.close()
+
+                import json
+                data = json.loads(content)
+                logger.info(f"Download successful via proxy {proxy}")
+                return data
+
+        except Exception as e:
+            logger.error(
+                f"Browser download failed for {self.url} via proxy {proxy}: {e}")
+            return {}
 
     def _download_backwards(self, start: int , end : int) -> None:
         if(start == end):
@@ -220,6 +283,57 @@ class Site(OpinionSiteLinear):
         self._date_sort()
         self._make_hash()
         return len(self.cases)
+
+    def _fetch_duplicate(self, data):
+        pdf_url = str(data.get("pdf_url"))
+        title = data.get("title")
+        date = data.get("date")
+        docket = data.get("docket")
+        html_url = data.get("html_url")
+        court_name = data.get("court_name")
+        object_id = None
+        if pdf_url.__eq__("") or (pdf_url is None) or pdf_url.__eq__("null"):
+            if html_url.__eq__("") or (html_url is None) or html_url.__eq__("null"):
+                return object_id
+            else:
+                query1 = {"html_url":html_url}
+                dup1 = self.judgements_collection.find_one(query1)
+                if not dup1 is None:
+                    query2 = {"court_name": court_name, "date": date, "title": title, "docket": docket}
+                    dup2 = self.judgements_collection.find_one(query2)
+                    if not dup2 is None:
+                        # Check if the document already exists and has been processed
+                        processed = dup2.get("processed")
+                        if processed == 10 or processed == 0:
+                            raise Exception("Judgment already Exists!")  # Replace with your custom DuplicateRecordException
+                        else:
+                            object_id = dup2.get("_id")
+
+        else:
+            query3 = {"pdf_url":pdf_url}
+            dup = self.judgements_collection.find_one(query3)
+            if dup is None:
+                query4 = {"court_name":court_name,"date":date, "title":title,"docket":docket}
+                dup2=self.judgements_collection.find_one(query4)
+                if not dup2 is None:
+                    # Check if the document already exists and has been processed
+                    processed = dup2.get("processed")
+                    if processed == 10 or processed == 0:
+                        raise Exception("Judgment already Exists!")  # Replace with your custom DuplicateRecordException
+                    else:
+                        object_id = dup2.get("_id")
+            else:
+                query4 = {
+                    "court_name": court_name, "date": date, "title": title, "docket": docket}
+                dup2 = self.judgements_collection.find_one(query4)
+                if not dup2 is None:
+                    # Check if the document already exists and has been processed
+                    processed = dup2.get("processed")
+                    if processed == 10 or processed == 0:
+                        raise Exception("Judgment already Exists!")  # Replace with your custom DuplicateRecordException
+                    else:
+                        object_id = dup2.get("_id")
+        return object_id
 
     def get_court_name(self):
         return "Supreme Court of New Hampshire"

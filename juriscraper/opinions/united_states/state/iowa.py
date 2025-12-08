@@ -29,9 +29,13 @@ class Site(OpinionSite):
 
         # Walk over pagination "Next" page(s), if present
         proceed = True
+        common_url = "https://www.iowacourts.gov/"
         while proceed:
             next_page_url = self.extract_next_page_url(html)
             if next_page_url:
+                if not next_page_url.startswith("http"):
+                    next_page_url = common_url.rstrip(
+                        "/") + "/" + next_page_url.lstrip("/")
                 logger.info(f"Scraping next page: {next_page_url}")
                 html = self._get_html_tree_by_url(next_page_url)
                 self.extract_cases(html)
@@ -83,7 +87,12 @@ class Site(OpinionSite):
             date_text = case_element.xpath("./following::p[1]")[
                 0].text_content()
             date_string = date_text.replace("Filed", "")
+
             url = case_element.xpath("./following::p[2]//a/@href")[0]
+            common_url = "https://www.iowacourts.gov/"
+            if not url.startswith(common_url):
+                url = common_url.rstrip("/") + "/" + url.lstrip("/")
+
             self.cases.append(
                 {"name": name, "docket": docket, "date": date_string,
                  "url": url, })

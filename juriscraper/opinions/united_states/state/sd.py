@@ -41,10 +41,17 @@ class Site(OpinionSiteLinear):
         duplicate = self.judgements_collection.find_one(query_for_duplication)
         url_d = self.judgements_collection.find_one(query_for_url)
 
-        url=url_d["pdf_url"]
+        #Wriiten by deepak , this line is giving none error and i try to but a if condition on it and also intiliazing it to none because getting unbounded error
+        # url=url_d["pdf_url"]
+
+        url = None
+        if url_d and "pdf_url" in url_d:
+            url = url_d["pdf_url"]
+            print("PDF URL found:", url)
+
         object_id = None
         if duplicate is None:
-            if data.get("pdf_url").split('/')[-1] in url.split('/')[-1]:
+            if url and data.get("pdf_url") and data.get("pdf_url").split('/')[-1] in url.split('/')[-1]:
                 processed = url_d.get("processed")
                 if processed == 10:
                     raise Exception(
@@ -77,6 +84,8 @@ class Site(OpinionSiteLinear):
         for row in self.html.xpath(".//table[@class='file-search-results__table']/tbody/tr"):
             title = row.xpath(".//td[2]//a/text()")[0]
             name = re.sub(r',\s*\d{4}\s*S\.D\.\s*\d+', '',title)
+            if name=='DECRAMER v. DORALE, MCCOOK COUNTY BD OF ADJUSTMENT':
+                print("Hello")
             cite = re.findall(r"\d{4} S\.D\. \d+", title)
             if not cite:
                 continue
@@ -86,6 +95,8 @@ class Site(OpinionSiteLinear):
             # And process the full docket number in the `extract_from_text` method
             # Called after the file has been downloaded.
             url = row.xpath(".//td[2]//a/@href")[0]
+            if not url.startswith("https"):
+                url = "https://ujs.sd.gov"+url
             docket = url.split("/")[-1][:5]
             self.cases.append(
                 {

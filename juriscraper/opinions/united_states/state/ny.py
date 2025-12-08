@@ -48,7 +48,7 @@ class Site(OpinionSiteLinear):
         # self._set_parameters()
         self.expected_content_types = ["application/pdf", "text/html"]
         self.make_backscrape_iterable(kwargs)  # set_api_token_header(self)
-        self.prox="http://104.223.126.101:8800"
+        self.prox="http://192.126.183.255:8800"
 
     def _set_parameters(self, start_date: Optional[date] = None,
         end_date: Optional[date] = None, ) -> None:

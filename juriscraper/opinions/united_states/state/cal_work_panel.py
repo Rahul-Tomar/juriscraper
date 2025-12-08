@@ -31,6 +31,8 @@ class Site(OpinionSiteLinear):
                     url = title.xpath("./a/@href")[0]
                     text = title.xpath("string(.)").strip()
 
+                if not url.startswith('http'):
+                    url="https://www.dir.ca.gov"+url
                 self.cases.append(
                     {
                         "date": date,

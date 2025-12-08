@@ -12,6 +12,7 @@ class Site(nyappdiv_2nd_new.Site):
         self.court_id = self.__module__
         self.court_type = "aidxtable_4"
         self.CURRENT_URL = self.BASE_URL + f"{self.court_type}.shtml"
+        print("-> ",self.CURRENT_URL)
 
     def get_court_name(self):
         return "Appellate Division of the Supreme Court, New York"

@@ -5,7 +5,7 @@ Creator: Andrei Chelaru
 Reviewer: mlr
 """
 from datetime import datetime
-
+import requests
 from fontTools.misc.plistlib import end_date
 from lxml import html
 
@@ -16,17 +16,17 @@ from juriscraper.OpinionSite import OpinionSite
 class Site(OpinionSite):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.court="Supreme Court"
+        self.court = "Supreme Court"
         self.dates = []
         self.urls = []
         self.names = []
         self.dockets = []
         self.status = []
-        self.judges=[]
-        # Note that we can't do the usual thing here because 'del' is a Python keyword.
+        self.judges = []
         self.court_id = "juriscraper.opinions.united_states.state.del"
         self.proxies = {
-            'http': 'http://192.126.183.51:8800', 'https': 'http://192.126.183.51:8800',
+            'http': 'http://192.126.184.28:8800',
+            'https': 'http://192.126.184.28:8800',
         }
 
     def _get_case_dates(self):
@@ -45,103 +45,114 @@ class Site(OpinionSite):
         return ["Published"] * len(self.dates)
 
     def _get_judges(self):
-        # We need special logic here because they use <br> tags in the cell text
         return self.judges
 
-    def _get_nth_cell_data(
-        self, cell_number, text=False, href=False, link_text=False
-    ):
-        # Retrieve specific types of data from all nTH cells in the table
-        path = "//table/tr/td[%d]" % cell_number
-        if text:
-            path += "/text()"
-        elif href:
-            path += "/a/@href"
-        elif link_text:
-            path += "/a/text()"
-        return self.html.xpath(path)
-
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        flag = True
+        session = requests.Session()
+        URL = "https://courts.delaware.gov/opinions/list.aspx"
+
+        # Initial GET with proxies
+        r = session.get(URL, proxies=self.proxies)
+        tree = html.fromstring(r.text)
+        viewstate = tree.xpath('//input[@id="__VIEWSTATE"]/@value')[0]
+        viewstategen = tree.xpath('//input[@id="__VIEWSTATEGENERATOR"]/@value')[0]
+
+        if not viewstate or not viewstategen:
+            raise Exception(
+                "Cannot find __VIEWSTATE or __VIEWSTATEGENERATOR on initial page"
+            )
+
         page = 1
-        while flag:
-            self.url = 'https://courts.delaware.gov/opinions/'
-            self.method = 'POST'
-            self.parameters={
-                "__VIEWSTATE": "q+vYLwcCJM5uANjCzVMRuixU0rRY0P+vw+LGu7rNHYpAuYSpF4krvJNkmOSvgg2oXNKXlqvQKtzFLiIdwDh/P10+7ufyQZm+g6nIbKCGbqk=",
-                "__VIEWSTATEGENERATOR": "9190679E",
-                "ctlOpinions1selagencies": self.court,
-                "ctlOpinions1selperiods": "date",
-                "ctlOpinions1txtstartdate": start_date.strftime('%m/%d/%Y'),
-                "ctlOpinions1txtenddate": end_date.strftime('%m/%d/%Y'),
-                "ctlOpinions1txtsearchtext": "",
-                "ctlOpinions1selresults": "100",
-                "ctlOpinions1hdnagency": self.court,
-                "ctlOpinions1hdncasetype": "",
-                "ctlOpinions1hdndivision": "",
-                "ctlOpinions1hdnsortby": "",
-                "ctlOpinions1hdnsortorder": "0",
-                "ctlOpinions1hdnsortbynew": "",
-                "ctlOpinions1hdnpageno": str(page)
+        self.url = 'https://courts.delaware.gov/opinions/'
+        self.method = 'POST'
+
+        while True:
+            print(f"[INFO] Processing page {page}")
+
+            payload = {
+                "__VIEWSTATE": viewstate,
+                "__VIEWSTATEGENERATOR": viewstategen,
+                "__EVENTTARGET": "",
+                "__EVENTARGUMENT": "",
+                "ctlOpinions1selAgencies": self.court,
+                "ctlOpinions1selPeriods": "2025",
+                "ctlOpinions1txtSearchText": "",
+                "ctlOpinions1selResults": "25",
+                "ctlOpinions1hdnAgency": self.court,
+                "ctlOpinions1hdnCaseType": "",
+                "ctlOpinions1hdnDivision": "",
+                "ctlOpinions1hdnSortBy": "",
+                "ctlOpinions1hdnSortOrder": "0",
+                "ctlOpinions1hdnSortByNew": "",
+                "ctlOpinions1hdnPageNo": str(page),
             }
-            if not self.downloader_executed:
-                self.html = self._download()
-                self._process_html()
-                # Find the last <li> element using XPath
-                last_li = self.html.xpath('//ul[@class="pagination"]/li[last()]')
-                # Print the last <li> element
-                if list(last_li).__len__()==0:
-                    flag=False
+
+            response = session.post(URL, data=payload, proxies=self.proxies)
+            tree = html.fromstring(response.text)
+
+            rows = tree.xpath("//table[contains(@class,'table')]/tbody/tr")
+            if not rows:
+                print(f"[INFO] No rows found on page {page}. Stopping.")
+                break
+
+            print(f"[INFO] Found {len(rows)} rows on page {page}")
+
+            for row in rows:
+                # Title
+                title = row.xpath(".//td[1]/a/span/text()")
+                self.names.append(title[0].strip() if title else "")
+                print("Title:", self.names[-1])
+
+                # URL
+                url = row.xpath(".//td[1]/a/@href")
+                if url:
+                    href = url[0].strip()
+                    if not href.startswith("https://courts.delaware.gov"):
+                        href = "https://courts.delaware.gov" + href
+                    self.urls.append(href)
+                    # print(href)
                 else:
-                    disabled_li=html.tostring(last_li[0], pretty_print=True).decode()
-                    if disabled_li.__contains__('class="disabled"'):
-                        flag = False
-
-                # appending dates
-                for date in self._get_nth_cell_data(2, text=True):
-                    self.dates.append(convert_date_string(date.strip()))
-
-                # appending urls
-                for url in self._get_nth_cell_data(1, href=True):
-                    self.urls.append(url.strip())
-
-                # appending title
-                for name in self._get_nth_cell_data(1, link_text=True):
-                    self.names.append(name.strip())
-
-                # appending dockets
-                for docket in self._get_nth_cell_data(3, link_text=True):
-                    doc=docket.strip()
-                    doc_arr=[]
-                    if doc.__contains__("/"):
+                    self.urls.append("")
+                # Date
+                date = row.xpath(".//td[2]/text()")
+                self.dates.append(convert_date_string(date[0].strip()) if date else "")
+                # print(date)
+                # Docket
+                docket = row.xpath(".//td[3]/a/span/text()")
+                # print(docket)
+                if docket:
+                    doc = docket[0].strip()
+                    if "/" in doc:
                         doc_arr = doc.split("/")
-                    elif doc.__contains__("&"):
+                    elif "&" in doc:
                         doc_arr = doc.split("&")
                     else:
-                        doc_arr=[doc]
-                    new_doc=[]
-                    for i in doc_arr:
-                        new_doc.append(i.strip())
+                        doc_arr = [doc]
+                    new_doc = [i.strip() for i in doc_arr]
                     self.dockets.append(new_doc)
+                else:
+                    self.dockets.append([])
 
-                # appending judges
-                for cell in self.html.xpath("//table/tr/td[6]"):
-                    judge = " ".join(cell.xpath("text()")).strip().replace("\n","")
-                    self.judges.append([judge])
+                # Judges
+                judge = row.xpath(".//td[6]//text()")
+                judge_clean = " ".join([j.strip() for j in judge if j.strip()])
+                self.judges.append([judge_clean])
 
-            page = page + 1
-            self.downloader_executed = False
+            next_viewstate = tree.xpath('//input[@id="__VIEWSTATE"]/@value')
+            if not next_viewstate or next_viewstate[0] == viewstate:
+                print("[INFO] No new __VIEWSTATE found — finished.")
+                break
 
-        # Set the attribute to the return value from _get_foo()
-        # e.g., this does self.case_names = _get_case_names()
+            viewstate = next_viewstate[0]
+            page += 1
+            if page>2:
+                break
+
+        # Finalize attributes for Juriscraper
         for attr in self._all_attrs:
             self.__setattr__(attr, getattr(self, f"_get_{attr}")())
-
         self._clean_attributes()
         if "case_name_shorts" in self._all_attrs:
-            # This needs to be done *after* _clean_attributes() has been run.
-               # The current architecture means this gets run twice. Once when we
-            # iterate over _all_attrs, and again here. It's pretty cheap though.
             self.case_name_shorts = self._get_case_name_shorts()
         self._post_parse()
         self._check_sanity()

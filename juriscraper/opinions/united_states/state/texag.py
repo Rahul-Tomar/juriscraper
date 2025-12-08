@@ -26,11 +26,15 @@ class Site(OpinionSiteLinear):
         ####################  NOT  #########################
         #################### FOUND #########################
 
+
         for case in cases:
             docket = case.xpath(".//h4")[0].text_content().strip()
             summary = case.xpath(".//p")[0].text_content().strip()
             url = case.xpath(".//a[contains(@href, '.pdf')]/@href")[0]
+            if url and not url.startswith("https"):
+                url="https://texasattorneygeneral.gov"+url
             name = f"Untitled Texas Attorney General Opinion: {docket}"
+            print(name)
             date = case.xpath(
                 ".//div[@class='sidebar-ag-opinion-casedate']/text()"
             )[0].strip()
@@ -47,3 +51,15 @@ class Site(OpinionSiteLinear):
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.parse()
         return 0
+
+    def get_class_name(self):
+        return "texag"
+
+    def get_court_name(self):
+        return "Attorney General of Texas — Opinion"
+
+    def get_court_type(self):
+        return "state"
+
+    def get_state_name(self):
+        return "Texas"

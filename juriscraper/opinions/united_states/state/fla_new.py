@@ -11,8 +11,8 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.court_code='68f021c4-6a44-4735-9a76-5360b2e8af13'
         self.proxies={
-            "http":"http://192.126.181.216:8800",
-            "https":"http://192.126.181.216:8800"
+            "http":"http://192.126.182.41:8800",
+            "https":"http://192.126.182.41:8800"
         }
 
     def _process_html(self):
@@ -38,7 +38,7 @@ class Site(OpinionSiteLinear):
                         summary = link_details["_embedded"]["results"][0]["docketEntryHeader"]['docketEntryDescription']
                         pdf_link_id = link_details['_embedded']['results'][0]['docketEntryHeader']['docketEntryUUID']
                         link2 = f"https://acis-api.flcourts.gov/courts/cms/docketentrydocumentsaccess?page=0&size=10&sort=documentName%2Casc&caseHeader.courtID={self.court_code}&docketEntryHeader.docketEntryUUID={pdf_link_id}&caseHeader.caseInstanceUUID={case_id}"
-                        # print(link2)
+                        print(link2)
                         # Hitting dialog box for pdf url
                         response2 = requests.get(url=link2, headers={"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"}, proxies=prox, timeout=60)
                         pdf_url_details = dict(json.loads(response2.text))
@@ -58,7 +58,7 @@ class Site(OpinionSiteLinear):
                 docket = result['caseHeader']['caseNumber']
                 title = result['caseHeader']['caseTitle']
                 date = result['caseHeader']['filedDate']
-
+                print(i)
                 i+=1
                 self.cases.append({
                     "url":pdf_url,

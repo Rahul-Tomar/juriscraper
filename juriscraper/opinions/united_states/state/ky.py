@@ -127,18 +127,29 @@ class Site(OpinionSiteLinear):
             else:
                 detail_url = self.docket_entry_url.format(row["docketEntryID"])
                 doc_json = self.get_json(detail_url)
+                # print(
+                #     f"[DEBUG] docketEntryID={row['docketEntryID']} "
+                #     f"Returned items: {len(doc_json) if isinstance(doc_json, list) else 'Not a list'} "
+                #     f"URL: {detail_url}"
+                # )
+                if not doc_json or not isinstance(doc_json, list) or len(
+                    doc_json) == 0:
+                    print(f"[SKIP] No documents returned for docketEntryID={row['docketEntryID']}")
+                    return
 
             if not case_name:
                 case_name = doc_json[0]["caseHeader"].get("shortTitle")
+                print(case_name)
             doc_id = doc_json[0].get("documentID")
-            doc_text = doc_json[0]["documentText"]
+            doc_text = doc_json[0]["documentText"] or []
             para = 1
             summary = ''
             for doc in doc_text:
                 if doc is not None:
                     summary = summary + f"({para}). " + doc + "\n"
                 para = para + 1
-
+            else :
+                summary=""
             if "\r\nTO BE PUBLISHED \r\n" in doc_text:
                 status = "Published"
             else:

@@ -18,7 +18,10 @@ class Site(OpinionSiteLinear):
             # court_nm = row.xpath("td[1]//text()")[0].strip()
             date = row.xpath("td[2]//text()")[0].strip()
             docket = row.xpath("td[3]//text()")[0].strip()
+            common_url = "https://www.mdcourts.gov"
             pdf_url = row.xpath("td[3]//a[contains(@href,'pdf')]/@href")[0]
+            if pdf_url and not pdf_url.startswith("http"):
+                pdf_url = common_url.rstrip("/") + "/" + pdf_url.lstrip("/")
             # term = row.xpath("td[4]//text()")[0].strip()
             judge = row.xpath("td[5]//text()")[0].strip()
             appellant = row.xpath("td[6]//text()")[0].strip()

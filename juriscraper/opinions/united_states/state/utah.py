@@ -33,6 +33,8 @@ class Site(OpinionSiteLinear):
 
             url = row.xpath(".//a/@href")[0]
             pdf_url = quote(url, safe="/:")
+            if not pdf_url.startswith("https://legacy.utcourts.gov/opinions/appopin/"):
+                pdf_url = "https://legacy.utcourts.gov/opinions/appopin/" + pdf_url.lstrip("/")
             dt = datetime.strptime(date, "Filed %B %d, %Y")
 
             self.cases.append(
