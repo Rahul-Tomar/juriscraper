@@ -12,8 +12,8 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.url="https://www.ca9.uscourts.gov/bap/#"
         self.proxies = {
-            "http": "http://192.126.183.255:8800",
-            "https": "http://192.126.183.255:8800"}
+            "http": "http://192.126.184.211:8800",
+            "https": "http://192.126.184.211:8800"}
 
 
     def _process_html(self) -> None:

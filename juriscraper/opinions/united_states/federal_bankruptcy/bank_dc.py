@@ -9,8 +9,8 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.status = "Published"
         self.proxies = {
-            "http": "http://192.126.181.216:8800",
-            "https": "http://192.126.181.216:8800"
+            "http": "http://192.126.184.11:8800",
+            "https": "http://192.126.184.11:8800"
         }
 
     def _process_html(self):

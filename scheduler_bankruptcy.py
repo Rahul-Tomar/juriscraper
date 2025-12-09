@@ -35,6 +35,7 @@ def setup_logging():
     logger.addHandler(console_handler)
     return logger
 
+logger = setup_logging()
 
 def get_module_name(file_path):
     return file_path.replace('.py', '').replace('/', '.')

@@ -32,7 +32,7 @@ class Site(OpinionSite):
         self.interval = 30
         self.court_id = self.__module__
         self.proxies = {
-            "http": "http://192.126.181.216:8800", "https": "http://192.126.181.216:8800"}
+            "http": "http://192.126.184.28:8800", "https": "http://192.126.184.28:8800"}
         self.data=None
         self.back_scrape_iterable = [i.date() for i in
             rrule(DAILY, interval=self.interval, dtstart=date(2007, 1, 1),
