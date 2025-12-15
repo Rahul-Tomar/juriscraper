@@ -32,6 +32,7 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         self.base = '//tr[../tr/th[contains(., "Caption")]]'
 
+
     def _get_download_urls(self):
         # return [t for t in self.html.xpath(f"{self.base}/td[1]/a/@href")]
         return self.case_urls
@@ -169,10 +170,7 @@ class Site(OpinionSiteLinear):
 
     @override
     def _request_url_get(self, url):
-        prox={
-                    'http': "http://192.126.184.28:8800",
-                    'https': "http://192.126.184.28:8800"
-                }
+        prox = self.proxies
         self.request["response"] = requests.get(url=url, proxies=prox, verify=self.request["verify"], timeout=120, )
 
     def get_class_name(self):

@@ -8,10 +8,6 @@ class Site(OpinionSiteLinear):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.status = "Published"
-        self.proxies = {
-            "http": "http://192.126.184.11:8800",
-            "https": "http://192.126.184.11:8800"
-        }
 
     def _process_html(self):
         rows = self.html.xpath('//table[@id="ts"]/tbody/tr')

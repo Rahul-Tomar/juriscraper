@@ -8,7 +8,7 @@ import traceback
 from casemine.casemine_util import CasemineUtil
 
 FOLDERS_TO_SCAN = ["juriscraper/opinions/united_states/federal_district"]
-RESTRICTED_CLASSES = {"d_sc", "dcd", "gov_info"}
+RESTRICTED_CLASSES = {"d_sc", "dcd", "gov_info", "ed_cal", "ed_okla", "nd_ill", "sd_texas", "nd_texas"}
 
 
 def setup_logging():

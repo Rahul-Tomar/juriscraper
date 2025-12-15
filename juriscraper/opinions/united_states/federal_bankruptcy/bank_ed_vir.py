@@ -100,10 +100,10 @@ class Site(OpinionSiteLinear):
         self.base = "https://www-a.vaeb.uscourts.gov/opinions/?v-r=uidl&v-uiId="
         self.session = requests.session()
         self.base_pdf ="https://www-a.vaeb.uscourts.gov/opinions/VAADIN/dynamic/resource"
-        self.proxies = {
-            "http": "http://192.126.182.41:8800",
-            "https": "http://192.126.182.41:8800"
-        }
+        # self.proxies = {
+        #     "http": "http://192.126.182.41:8800",
+        #     "https": "http://192.126.182.41:8800"
+        # }
 
     def extract_case_title(self,summary: str) -> str:
         clean_text = re.sub(r'\s+', ' ', summary)

@@ -57,9 +57,8 @@ class Site(OpinionSiteLinear):
         new_url = str(url).split("||")[0]
         data = str(url).split("||")[1]
         us_proxy = CasemineUtil.get_us_proxy()
-
-        self.request["response"] = requests.post(url=new_url, headers=headers, verify=self.request["verify"], data=data, proxies={ 'http': f'http://192.126.184.11:8800',
-                    'https': f'http://192.126.184.11:8800'}, timeout=60)
+        proxies=self.proxies
+        self.request["response"] = requests.post(url=new_url, headers=headers, verify=self.request["verify"], data=data, proxies=proxies, timeout=60)
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.url='https://developer.uspto.gov/ptab-api/decisions/json'

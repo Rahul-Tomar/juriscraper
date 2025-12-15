@@ -10,10 +10,10 @@ class Site(bank_nd_ind.Site):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.base="https://www.mnb.uscourts.gov/judges-info/opinions?field_opinion_date_value%5Bvalue%5D%5Byear%5D={}&field_judge_nid=All&page={}"
-        self.proxies = {
-            "http": "http://192.126.184.211:8800",
-            "https": "http://192.126.184.211:8800"
-        }
+        # self.proxies = {
+        #     "http": "http://192.126.184.211:8800",
+        #     "https": "http://192.126.184.211:8800"
+        # }
 
     def _process_html(self) -> None:
         for row in self.html.xpath(".//div[contains(@class, 'view-opinions') and contains(@class, 'file-listing')]//div[@class='item-list']/ul/li"):
