@@ -44,10 +44,23 @@ class Site(OpinionSiteLinear):
                     if res==1:
                         break
                 docket = self.check_len(tr.xpath("./td[2]/a/text()")).split("&")
+
+                # # normalize docket values
+                # skip_dockets = {"25-23044", "25-25591"}
+                # if any(d.strip() in skip_dockets for d in docket):
+                #     continue
+
                 pdf_url = self.check_len(tr.xpath("./td[2]/a/@href"))
                 adv_no = self.check_len(tr.xpath("./td[3]/text()"))
                 title = self.check_len(tr.xpath("./td[4]/text()"))
                 summary = self.check_len(tr.xpath("./td[5]/text()"))
+
+                skip_dockets = {"25-23044", "25-25591"}
+
+                if title == "" and any(
+                    d.strip() in skip_dockets for d in docket):
+                    continue
+
                 if date.__eq__("") and pdf_url.__eq__(""):
                     continue
                 self.cases.append({
