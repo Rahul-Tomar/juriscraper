@@ -8,7 +8,7 @@ import traceback
 from casemine.casemine_util import CasemineUtil
 
 FOLDERS_TO_SCAN = ["juriscraper/opinions/united_states/federal_bankruptcy"]
-RESTRICTED_CLASSES = {'bap1', 'bap9', 'bap10'}
+RESTRICTED_CLASSES = {'bap1', 'bap9', 'bap10', 'bank_nd_missi'}
 
 
 def setup_logging():
