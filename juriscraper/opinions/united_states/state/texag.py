@@ -7,7 +7,7 @@ History:
     2023-01-28: Updated by William E. Palin
 """
 from datetime import datetime
-
+import re
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 
@@ -38,6 +38,19 @@ class Site(OpinionSiteLinear):
             date = case.xpath(
                 ".//div[@class='sidebar-ag-opinion-casedate']/text()"
             )[0].strip()
+            if not docket:
+                DOCKET_PATTERN = re.compile(r"\bKP-\d{4}\b")
+
+                text = name
+
+                match = DOCKET_PATTERN.search(text)
+                if match:
+                    docket = match.group()
+                    print(docket)
+
+            if not docket:
+                raise Exception("Docket is missing or empty")
+
             self.cases.append(
                 {
                     "name": name,

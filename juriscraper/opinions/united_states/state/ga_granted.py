@@ -7,7 +7,7 @@ class Site(ga.Site):
         self.court_id = self.__module__
         self.court="granted"
         self.proxies = {
-            "http": "http://192.126.182.41:8800", "https": "http://192.126.182.41:8800"}
+            "http": "http://23.236.154.202:8800", "https": "http://23.236.154.202:8800"}
 
 
     def get_class_name(self):

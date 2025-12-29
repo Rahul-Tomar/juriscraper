@@ -2,9 +2,12 @@ import re
 from datetime import date, datetime, timedelta
 from typing import Optional, Tuple
 from urllib.parse import urlencode, urljoin
+
+from casemine.casemine_util import CasemineUtil
 from juriscraper.AbstractSite import logger
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
-
+import os
+import requests
 
 class Site(OpinionSiteLinear):
     days_interval = 15
@@ -22,6 +25,10 @@ class Site(OpinionSiteLinear):
             r"(?P<volume>20\d{2})\s(?P<reporter>WI)\s(?P<page>\d+)"
         )
         self.make_backscrape_iterable(kwargs)
+        self.proxies={
+            'http': 'http://156.241.224.100:8800',
+            'https': 'http://156.241.224.100:8800',
+        }
 
     def set_url(
         self, start: Optional[date] = None, end: Optional[date] = None
@@ -114,6 +121,72 @@ class Site(OpinionSiteLinear):
         self._date_sort()
         self._make_hash()
         return len(self.cases)
+
+    def download_pdf(self, data, objectId):
+        pdf_url = data.__getitem__('pdf_url')
+        html_url = data.__getitem__('html_url')
+        year = int(data.__getitem__('year'))
+        court_name = data.get('court_name')
+        court_type = data.get('court_type')
+
+        if str(court_type).__eq__('Federal'):
+            state_name=data.get('circuit')
+        else:
+            state_name = data.get('state')
+        opinion_type = data.get('opinion_type')
+
+        if str(opinion_type).__eq__("Oral Argument"):
+            path = "/synology/PDFs/US/juriscraper/" + court_type + "/" + state_name + "/" + court_name + "/" + "oral arguments/" + str(year)
+        else:
+            path = "/synology/PDFs/US/juriscraper/" + court_type + "/" + state_name + "/" + court_name + "/" + str(year)
+
+        obj_id = str(objectId)
+        download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
+
+        if pdf_url.__eq__("") or (pdf_url is None) or pdf_url.__eq__("null"):
+            if html_url.__eq__("") or (html_url is None) or html_url.__eq__("null"):
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 2}})
+            else:
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 0}})
+        else:
+            i = 0
+            while True:
+                try:
+                    os.makedirs(path, exist_ok=True)
+                    # us_proxy = CasemineUtil.get_us_proxy()
+                    us_proxy = {
+                        "http": "http://156.241.224.100:8800",
+                        "https": "http://156.241.224.100:8800",
+                    }
+                    response = requests.get(
+                        url=pdf_url,
+                        headers={
+                            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+                        },
+                        proxies=us_proxy,
+                        timeout=120
+                    )
+                    response.raise_for_status()
+                    with open(download_pdf_path, 'wb') as file:
+                        file.write(response.content)
+                    self.judgements_collection.update_one({"_id": objectId},
+                                                          {"$set": {"processed": 0}})
+                    break
+                except requests.RequestException as e:
+                    if str(e).__contains__("Unable to connect to proxy"):
+                        i+=1
+                        if i>10:
+                            break
+                        else:
+                            continue
+                    else:
+                        print(f"Error while downloading the PDF: {e}")
+                        self.judgements_collection.update_many({"_id": objectId}, {
+                        "$set": {"processed": 2}})
+                        break
+        return download_pdf_path
 
     def get_court_type(self):
         return "state"

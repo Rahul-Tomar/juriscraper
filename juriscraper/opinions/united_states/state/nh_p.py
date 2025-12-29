@@ -19,6 +19,9 @@ History:
 """
 
 import re
+import requests
+import os
+from playwright.sync_api import sync_playwright
 from datetime import datetime
 from typing import Dict, List
 from urllib.parse import urlencode, urljoin
@@ -65,8 +68,8 @@ class Site(OpinionSiteLinear):
         self.paginate = False
         temp_date = None
         self.proxies = {
-            "http": "http://192.126.184.28:8800",
-            "https": "http://192.126.184.28:8800",
+            "http": "http://23.236.154.202:8800",
+            "https": "http://23.236.154.202:8800",
         }
     def _process_html(self) -> None:
         json_response = self.html
@@ -334,6 +337,126 @@ class Site(OpinionSiteLinear):
                     else:
                         object_id = dup2.get("_id")
         return object_id
+
+    def _download_via_playwright(self, pdf_url: str, save_path: str,
+                                 warmup_url: str | None = None) -> bool:
+        try:
+
+            with sync_playwright() as p:
+                playwright_proxy = {
+                    "server": "http://23.236.154.202:8800"
+                }
+                browser = p.firefox.launch(
+                    headless=True,
+                    proxy=playwright_proxy
+                )
+                page = browser.new_page()
+
+                # Akamai/session warmup
+                if warmup_url:
+                    page.goto(warmup_url, wait_until="networkidle")
+
+                with page.expect_download() as download_info:
+                    page.evaluate(f'window.location.href = "{pdf_url}"')
+
+                download = download_info.value
+                download.save_as(save_path)
+
+                browser.close()
+                return True
+
+        except Exception as e:
+            print(f"[Playwright] PDF download failed: {e}")
+            return False
+
+    def _download_via_requests(self, pdf_url: str, save_path: str) -> None:
+        us_proxy = CasemineUtil.get_us_proxy()
+
+        response = requests.get(
+            url=pdf_url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+            },
+            proxies={
+                "http": f"http://{us_proxy.ip}:{us_proxy.port}",
+                "https": f"http://{us_proxy.ip}:{us_proxy.port}"
+            },
+            timeout=120
+        )
+        response.raise_for_status()
+
+        with open(save_path, "wb") as f:
+            f.write(response.content)
+
+    def download_pdf(self, data, objectId):
+        pdf_url = data.get("pdf_url")
+        html_url = data.get("html_url")
+        year = int(data.get("year"))
+        court_name = data.get("court_name")
+        court_type = data.get("court_type")
+
+        state_name = data.get(
+            "circuit") if court_type == "Federal" else data.get("state")
+        opinion_type = data.get("opinion_type")
+
+        if opinion_type == "Oral Argument":
+            path = f"/synology/PDFs/US/juriscraper/{court_type}/{state_name}/{court_name}/oral arguments/{year}"
+        else:
+            path = f"/synology/PDFs/US/juriscraper/{court_type}/{state_name}/{court_name}/{year}"
+
+        os.makedirs(path, exist_ok=True)
+        download_pdf_path = os.path.join(path, f"{objectId}.pdf")
+
+        # -----------------------------
+        # No PDF URL handling
+        # -----------------------------
+        if not pdf_url or pdf_url == "null":
+            processed = 2 if not html_url or html_url == "null" else 0
+            self.judgements_collection.update_one(
+                {"_id": objectId}, {"$set": {"processed": processed}}
+            )
+            return download_pdf_path
+
+        # -----------------------------
+        # Try REQUESTS first
+        # -----------------------------
+        proxy_failures = 0
+        while proxy_failures <= 10:
+            try:
+                self._download_via_requests(pdf_url, download_pdf_path)
+                self.judgements_collection.update_one(
+                    {"_id": objectId}, {"$set": {"processed": 0}}
+                )
+                return download_pdf_path
+
+            except requests.RequestException as e:
+                if "Unable to connect to proxy" in str(e):
+                    proxy_failures += 1
+                    continue
+                else:
+                    break
+
+        # -----------------------------
+        # Fallback → PLAYWRIGHT
+        # -----------------------------
+        print("[Fallback] Switching to Playwright")
+
+        success = self._download_via_playwright(
+            pdf_url=pdf_url,
+            save_path=download_pdf_path,
+            warmup_url=html_url
+        )
+
+        if success:
+            self.judgements_collection.update_one(
+                {"_id": objectId}, {"$set": {"processed": 0}}
+            )
+        else:
+            self.judgements_collection.update_one(
+                {"_id": objectId}, {"$set": {"processed": 2}}
+            )
+
+        return download_pdf_path
 
     def get_court_name(self):
         return "Supreme Court of New Hampshire"

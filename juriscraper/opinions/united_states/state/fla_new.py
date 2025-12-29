@@ -11,8 +11,8 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.court_code='68f021c4-6a44-4735-9a76-5360b2e8af13'
         self.proxies={
-            "http":"http://192.126.182.41:8800",
-            "https":"http://192.126.182.41:8800"
+            "http":"http://23.236.154.202:8800",
+            "https":"http://23.236.154.202:8800"
         }
 
     def _process_html(self):

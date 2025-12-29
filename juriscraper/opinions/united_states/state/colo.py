@@ -228,7 +228,7 @@ class Site(OpinionSiteLinear):
 
                 self._process_html()
                 page += 1
-                if page>35:
+                if page>5:
                     return
 
             except Exception as e:

@@ -11,8 +11,9 @@ client = MongoClient("mongodb://"+CRAWL_DATABASE_IP+":"+str(DATABASE_PORT))
 db = client[DATABASE_NAME]
 collection = db[MAIN_COLLECTION]
 
-query = {'class_name':"ny","response_html":{"$regex":"This site can’t be reached"}}
-
+# query = {'class_name':"ny","response_html":{"$regex":"This site can’t be reached"}}
+# query = {"processed": 2, "court_type":'state",crawledAt": {"$gte": datetime(2025, 1, 1)}}
+query = {'processed':2,'court_type':'state','year':2025}
 # lst=["67358b58f2b8aa8ee26a1422","67359311f2b8aa8ee26a14ee","6735933af2b8aa8ee26a14fc","6735939ff2b8aa8ee26a1507","67359414f2b8aa8ee26a152e","67359492f2b8aa8ee26a1544","6735975dc1b626349b6cefe7","67359a2fc1b626349b6cf06e","67359e88c1b626349b6cf0e0","67359e96c1b626349b6cf0e4","67359f1cc1b626349b6cf0f9","6735a047c1b626349b6cf118","6735a113c1b626349b6cf12c","6735a41bc1b626349b6cf187","6735a55bc1b626349b6cf1af","6735a61ec1b626349b6cf1d7","6735a78cc1b626349b6cf1f0","6735a9aec1b626349b6cf22f","6735a20e0246406efd7107b2","6735a3019a3c0719f5fddba3",]
 # for i in lst:
     # query = {'state':'Delaware',"_id":ObjectId(i)}
@@ -40,15 +41,17 @@ for doc in crawl_cursor:
     download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
     os.makedirs(path, exist_ok=True)
     try:
-        if not str(pdf_url).__contains__("https://www.courts.ca.gov"):
-            pdf_url="https://www.courts.ca.gov"+pdf_url
+        # if not str(pdf_url).__contains__("https://www.courts.ca.gov"):
+        #     pdf_url="https://www.courts.ca.gov"+pdf_url
 
         response = requests.get(url=pdf_url,
                                 proxies={
                     # 'http': 'socks5h://127.0.0.1:9050','https': 'socks5h://127.0.0.1:9050',
-                    "http": "http://192.126.217.76:8800", "https": "http://192.126.217.76:8800"
+                    "http": "http://192.126.184.28:8800", "https": "http://192.126.184.28:8800"
                 }
                                 )
+
+
         # response.raise_for_status()
         with open(download_pdf_path, 'wb') as file:
             file.write(response.content)
@@ -58,7 +61,7 @@ for doc in crawl_cursor:
         print(f"{i} - {obj_id} updated")
         i = i + 1
     except Exception as e:
-        print(f"{i} - Error while downloading the PDF: {e} for {objectId}")
+        print(f"{i} - Error while downloading the PDF: {e} for {objectId} , {court_name}")
         update_query.__setitem__("processed", 2)
         collection.update_one({"_id": objectId}, {"$set": update_query})
         i=i+1

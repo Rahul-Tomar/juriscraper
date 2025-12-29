@@ -9,7 +9,7 @@ Court Short Name: Ariz.
 
 import time
 from datetime import date, datetime
-
+import os
 from lxml import html
 import requests
 
@@ -115,7 +115,7 @@ class Site(OpinionSite):
                 }
                 logger.info(f"{self.url}&page={page}")
                 pagination_response = requests.post(url=self.url, proxies=self.proxies, data=pagination_param)
-
+                # print(pagination_response.text)
                 self.html = html.fromstring(pagination_response.text)
                 # print(html.tostring(self.html, pretty_print=True).decode("utf-8"))
             elif self.get_class_name().__eq__('arizctapp_div_1'):
@@ -170,7 +170,11 @@ class Site(OpinionSite):
             else:
                 pass
 
-            doc_path = '//a[contains(@id , "hypCaseNum")]//text()'
+            # print(self.html.xpath("string()")[:1000])
+            # print(html.tostring(self.html, pretty_print=True).decode("utf-8")[:20000])
+            rows = self.html.xpath("//table//tr")
+            # print(len(rows))
+            doc_path = '//div[contains(@class,"title-number")]//span[@class="field-content"]/text()'
             for t in self.html.xpath(doc_path):
                 self.dockets.append([t])
 
@@ -229,6 +233,83 @@ class Site(OpinionSite):
         self._date_sort()
         self._make_hash()
         return 0
+
+    def download_pdf(self, data, objectId):
+        pdf_url = data.__getitem__('pdf_url')
+        html_url = data.__getitem__('html_url')
+        year = int(data.__getitem__('year'))
+        court_name = data.get('court_name')
+        court_type = data.get('court_type')
+
+        if str(court_type).__eq__('Federal'):
+            state_name=data.get('circuit')
+        else:
+            state_name = data.get('state')
+        opinion_type = data.get('opinion_type')
+
+        if str(opinion_type).__eq__("Oral Argument"):
+            path = "/synology/PDFs/US/juriscraper/" + court_type + "/" + state_name + "/" + court_name + "/" + "oral arguments/" + str(year)
+        else:
+            path = "/synology/PDFs/US/juriscraper/" + court_type + "/" + state_name + "/" + court_name + "/" + str(year)
+
+        obj_id = str(objectId)
+        download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
+
+        if pdf_url.__eq__("") or (pdf_url is None) or pdf_url.__eq__("null"):
+            if html_url.__eq__("") or (html_url is None) or html_url.__eq__("null"):
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 2}})
+            else:
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 0}})
+        else:
+            i = 0
+            while True:
+                try:
+                    os.makedirs(path, exist_ok=True)
+                    us_proxy = CasemineUtil.get_us_proxy()
+                    response = requests.get(
+                        url=pdf_url,
+                        headers={
+                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                            "Accept-Encoding": "gzip, deflate, br, zstd",
+                            "Accept-Language": "en-US,en;q=0.5",
+                            "Connection": "keep-alive",
+                            "Cookie": ".ASPXANONYMOUS=9EyfwsJo5T4dHKU65EjYU0XykBeT9hyeZkuuFgpVSD8z8B_ueKUpUVjgeHVaMsju-aTjSAKRmoiWsnhNxdIs9lniNaNykEeevTCIsg7HeOk9t71K0; _ga_9N7TX7BQ5D=GS2.1.s1765279720$o4$g1$t1765279746$j34$l0$h0; _ga=GA1.1.300682627.1762929701; __utma=213495364.300682627.1762929701.1763028233.1765279725.3; __utmz=213495364.1763028233.2.2.utmcsr=google|utmccn=(organic)|utmcmd=organic|utmctr=(not%20provided); dnn_IsMobile=False; language=en-US; LastRotate5004=0; __RequestVerificationToken=6JRxLN2dVAwY7bNlvmlk_UGcNkUqpVSLZLZuviVP6X9YFFkJdqay23iXL2HaaBCwV8586Q2; ShowAt5004=0; ASP.NET_SessionId=n24ia0lz55us33nbdudc30vk; __utmc=213495364; __cf_bm=QpYQo_uBB8zGPJM0b52BCjWGLFXEQTiPWwrMvy2zgD0-1765279751.5874143-1.0.1.1-MZf0mRg7ml1fq8clWfOrG9YOiYVn0D4HflCSuAB5.WydPpI.5XXICmfhFZ5NbmKdMGSHw7C1oF_9iwIw4H8iQiBdbxdbNPw65uE3Xhmu2jjLJaylbd7qZNvZiD3hYz5N; __utmb=213495364.2.10.1765279725; __utmt=1",
+                            "Host": "www.azcourts.gov",
+                            "Priority": "u=0, i",
+                            "Sec-Fetch-Dest": "document",
+                            "Sec-Fetch-Mode": "navigate",
+                            "Sec-Fetch-Site": "none",
+                            "Sec-Fetch-User": "?1",
+                            "Upgrade-Insecure-Requests": "1",
+                            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+                        },
+                        proxies={
+                            "http": f"http://{us_proxy.ip}:{us_proxy.port}",
+                            "https": f"http://{us_proxy.ip}:{us_proxy.port}"
+                        },
+                        timeout=120
+                    )
+                    response.raise_for_status()
+                    with open(download_pdf_path, 'wb') as file:
+                        file.write(response.content)
+                    self.judgements_collection.update_one({"_id": objectId},
+                                                          {"$set": {"processed": 0}})
+                    break
+                except requests.RequestException as e:
+                    if str(e).__contains__("Unable to connect to proxy"):
+                        i+=1
+                        if i>10:
+                            break
+                        else:
+                            continue
+                    else:
+                        print(f"Error while downloading the PDF: {e}")
+                        self.judgements_collection.update_many({"_id": objectId}, {
+                        "$set": {"processed": 2}})
+                        break
+        return download_pdf_path
 
     def get_court_type(self):
         return "state"

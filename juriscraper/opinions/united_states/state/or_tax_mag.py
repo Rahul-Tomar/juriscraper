@@ -14,7 +14,7 @@ class Site(orsc.Site):
         self.url = (
             "https://www.courts.oregon.gov/publications/tax/Pages/tax-magistrate.aspx"
         )
-        self.status = "Unublished"
+        self.status = "Unpublished" # spelling mistake changed by Ashish
         self.court_code = "p17027coll6"
 
     def get_pdf_id(self,docket : str, name : str):

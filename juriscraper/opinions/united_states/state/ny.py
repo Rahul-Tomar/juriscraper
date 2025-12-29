@@ -48,7 +48,7 @@ class Site(OpinionSiteLinear):
         # self._set_parameters()
         self.expected_content_types = ["application/pdf", "text/html"]
         self.make_backscrape_iterable(kwargs)  # set_api_token_header(self)
-        self.prox="http://192.126.183.255:8800"
+        self.prox="http://23.236.154.202:8800"
 
     def _set_parameters(self, start_date: Optional[date] = None,
         end_date: Optional[date] = None, ) -> None:
@@ -479,6 +479,8 @@ class Site(OpinionSiteLinear):
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         # start_date=datetime(2024,1,1)
         # end_date=datetime(2024,7,31)
+        end_date = start_date + timedelta(days=7)
+
         dates = (start_date, end_date)
         print(dates)
         self._download_backwards(dates)

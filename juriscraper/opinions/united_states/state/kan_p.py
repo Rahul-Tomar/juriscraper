@@ -35,7 +35,7 @@ class Site(OpinionSiteLinear):
 
         HEADLESS = True
         TIMEOUT_MS = 60000
-        PROXY_SERVER = "http://192.126.182.31:8800"
+        PROXY_SERVER = "http://23.236.154.202:8800"
 
         with sync_playwright() as p:
             browser = p.firefox.launch(headless=HEADLESS, proxy={"server": PROXY_SERVER})

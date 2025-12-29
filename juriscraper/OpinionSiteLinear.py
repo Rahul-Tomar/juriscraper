@@ -44,7 +44,9 @@ class OpinionSiteLinear(OpinionSite):
         "precedential_status",
         "response_html",
         "opinion_type",
-        "teaser"
+        "teaser",
+        "revision_status",
+        "lower_court_info"
     }
 
     def __init__(self, *args, **kwargs):

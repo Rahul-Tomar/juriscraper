@@ -35,6 +35,8 @@ class Site(OpinionSiteLinear):
                 if res == 1:
                     return
                 # print(f"{date} || {cleaned_list} || {title} || {url}")
+                if not docket:
+                    raise Exception("Docket not found")
                 self.cases.append({
                     "date":date,
                     "docket":cleaned_list,
@@ -44,6 +46,7 @@ class Site(OpinionSiteLinear):
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.url = f"https://labor.arkansas.gov/workers-comp/awcc-opinions/{self.court_code}/"
+        print(self.url)
         self.parse()
         return 0
 

@@ -25,8 +25,8 @@ class Site(OpinionSite):
         self.judges = []
         self.court_id = "juriscraper.opinions.united_states.state.del"
         self.proxies = {
-            'http': 'http://192.126.184.28:8800',
-            'https': 'http://192.126.184.28:8800',
+            'http': 'http://23.236.154.202:8800',
+            'https': 'http://23.236.154.202:8800',
         }
 
     def _get_case_dates(self):
@@ -88,6 +88,7 @@ class Site(OpinionSite):
             }
 
             response = session.post(URL, data=payload, proxies=self.proxies)
+            print(response.text)
             tree = html.fromstring(response.text)
 
             rows = tree.xpath("//table[contains(@class,'table')]/tbody/tr")
@@ -99,7 +100,9 @@ class Site(OpinionSite):
 
             for row in rows:
                 # Title
-                title = row.xpath(".//td[1]/a/span/text()")
+                title = row.xpath(".//td[1]/a/text()")
+                if not title:
+                    continue
                 self.names.append(title[0].strip() if title else "")
                 print("Title:", self.names[-1])
 
@@ -114,11 +117,11 @@ class Site(OpinionSite):
                 else:
                     self.urls.append("")
                 # Date
-                date = row.xpath(".//td[2]/text()")
+                date = row.xpath(".//td[2]/span/text()")
                 self.dates.append(convert_date_string(date[0].strip()) if date else "")
                 # print(date)
                 # Docket
-                docket = row.xpath(".//td[3]/a/span/text()")
+                docket = row.xpath(".//td[3]/a/text()")
                 # print(docket)
                 if docket:
                     doc = docket[0].strip()

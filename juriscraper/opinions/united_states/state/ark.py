@@ -55,7 +55,7 @@ class Site(OpinionSiteLinear):
                 BASE_URL = "https://opinions.arcourts.gov"
                 url = urljoin(BASE_URL, docket_url)
 
-            response = requests.get(url=url, headers={"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"}, proxies={"http": "socks5h://127.0.0.1:9050", "https": "socks5h://127.0.0.1:9050"}, timeout=120)
+            response = requests.get(url=url, headers={"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"}, proxies={"http": "http://23.236.154.202:8800", "https": "http://23.236.154.202:8800"}, timeout=120)
             html_tree = self._make_html_tree(response.text)
             docket=[]
             docket_data = html_tree.xpath("//tr[td[@class='label' and text()='Docket Number']]/td[@class='metadata']/text()")
@@ -72,6 +72,12 @@ class Site(OpinionSiteLinear):
                 return
             if self.cases.__contains__({"date": date_filed, "docket": [], "name": titlecase(name), "citation": cite, "url": url, "status": "Published", "per_curiam": per_curiam}):
                 return
+
+            flag = self.is_item_url(url)
+            if flag :
+                url = self.transform_to_document_url(url)
+            # if not docket:
+
             self.cases.append(
                 {
                     "date": date_filed,
@@ -115,6 +121,36 @@ class Site(OpinionSiteLinear):
         if match:
             return {"OpinionCluster": {"docket_number": match[0]}}
         return {}
+
+    def transform_to_document_url(self, url: str) -> str:
+        """
+        Converts:
+        https://opinions.arcourts.gov/.../item/<id>/index.do?iframe=true
+        to:
+        https://opinions.arcourts.gov/.../<id>/1/document.do
+        """
+        match = re.search(r"/item/(\d+)/index\.do", url)
+        if not match:
+            return url  # If not matched, return original
+
+        doc_id = match.group(1)
+
+        # Replace entire tail
+        new_url = re.sub(
+            r"/item/\d+/index\.do.*",
+            f"/{doc_id}/1/document.do",
+            url
+        )
+
+        return new_url
+
+    def is_item_url(self, url: str) -> bool:
+        """
+        Returns True if URL matches the arcourts 'item' pattern:
+        https://opinions.arcourts.gov/.../item/<id>/index.do?iframe=true
+        """
+        pattern = r"/item/\d+/index\.do"
+        return bool(re.search(pattern, url))
 
     def _download_backwards(self, dates: Tuple[date]) -> None:
         """Make custom date range request

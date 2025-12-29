@@ -17,10 +17,12 @@ History:
 
 import re
 from datetime import datetime
-
+import os
 import requests
 from typing_extensions import override
+from playwright.sync_api import sync_playwright
 
+from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 
@@ -40,7 +42,7 @@ class Site(OpinionSiteLinear):
             "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
         }
         self.proxies = {
-            'http': 'http://192.126.182.41:8800', 'https': 'http://192.126.182.41:8800', }
+            'http': 'http://23.236.154.202:8800', 'https': 'http://23.236.154.202:8800', }
         self.needs_special_headers = True
 
     def _process_html(self):
@@ -91,6 +93,76 @@ class Site(OpinionSiteLinear):
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.parse()
         return 0
+
+    def download_pdf(self, data, objectId):
+        pdf_url = data.__getitem__('pdf_url')
+        html_url = data.__getitem__('html_url')
+        year = int(data.__getitem__('year'))
+        court_name = data.get('court_name')
+        court_type = data.get('court_type')
+
+        if str(court_type).__eq__('Federal'):
+            state_name=data.get('circuit')
+        else:
+            state_name = data.get('state')
+        opinion_type = data.get('opinion_type')
+
+        if str(opinion_type).__eq__("Oral Argument"):
+            path = "/synology/PDFs/US/juriscraper/" + court_type + "/" + state_name + "/" + court_name + "/" + "oral arguments/" + str(year)
+        else:
+            path = "/synology/PDFs/US/juriscraper/" + court_type + "/" + state_name + "/" + court_name + "/" + str(year)
+
+        obj_id = str(objectId)
+        download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
+
+        if pdf_url.__eq__("") or (pdf_url is None) or pdf_url.__eq__("null"):
+            if html_url.__eq__("") or (html_url is None) or html_url.__eq__("null"):
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 2}})
+            else:
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 0}})
+        else:
+            i = 0
+            while True:
+                try:
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                    proxy_config = {
+                        "server": "http://23.236.197.227:8800"  # fixed proxy
+                    }
+                    with sync_playwright() as p:
+                        browser = p.firefox.launch(headless=True,proxy=proxy_config)
+                        page = browser.new_page()
+                        with page.expect_download() as download_info:
+                            # Use evaluate to simulate a browser click for direct download
+                            page.evaluate(f'''
+                                () => {{
+                                    const a = document.createElement("a");
+                                    a.href = "{pdf_url}";
+                                    a.download = "";
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    a.remove();
+                                }}
+                            ''')
+                        download = download_info.value
+                        download.save_as(download_pdf_path)
+                    self.judgements_collection.update_one({"_id": objectId},
+                                                          {"$set": {"processed": 0}})
+                    break
+                except requests.RequestException as e:
+                    if str(e).__contains__("Unable to connect to proxy"):
+                        i+=1
+                        if i>10:
+                            break
+                        else:
+                            continue
+                    else:
+                        print(f"Error while downloading the PDF: {e}")
+                        self.judgements_collection.update_many({"_id": objectId}, {
+                        "$set": {"processed": 2}})
+                        break
+        return download_pdf_path
 
     def get_court_name(self):
         return "Supreme Judicial Court of Massachusetts"

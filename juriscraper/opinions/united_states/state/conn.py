@@ -1,14 +1,16 @@
 import re
 from datetime import date, datetime
 from typing import Tuple
-
+from playwright.sync_api import sync_playwright
 from dateutil.parser import parse
 from urllib.parse import urlparse
 from casemine.casemine_util import CasemineUtil
 from juriscraper.AbstractSite import logger
 from juriscraper.lib.string_utils import clean_string
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
-
+import os
+import re
+import requests
 
 class Site(OpinionSiteLinear):
     court_abbv = "sup"
@@ -29,12 +31,24 @@ class Site(OpinionSiteLinear):
 
     @staticmethod
     def find_published_date(date_str: str) -> str:
+        """
+            Extracts a published date from text like:
+            'To Be Published in the Connecticut Law Journal of December 16, 2025:'
+            """
 
-        m = re.search(
-            r"(\b\d{1,2}/\d{1,2}/\d{2,4}\b)|(\b(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}\b)",
-            date_str,
+        pattern = re.compile(
+            r"(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}"
+            r"|"
+            r"\b\d{1,2}/\d{1,2}/\d{2,4}\b"
         )
-        return m.groups()[0] if m.groups()[0] else m.groups()[1]
+
+        m = pattern.search(date_str)
+
+        if not m:
+            raise ValueError(
+                f"Unable to extract published date from: {date_str}")
+
+        return m.group(0)
 
     def extract_dockets_and_name(self, row) -> Tuple[str, str]:
 
@@ -61,7 +75,19 @@ class Site(OpinionSiteLinear):
             pub = row.xpath('preceding::*[contains(., "Published")][1]/text()')
             if pub:
                 date_filed_is_approximate = False
-                date_filed = self.find_published_date(pub[0])
+                print(pub)
+                try :
+                    date_filed = self.find_published_date(pub[0])
+                except Exception:
+                    if isinstance(pub, list):
+                        pub_text = " ".join(
+                            t.strip() for t in pub if t.strip())
+                    else:
+                        pub_text = str(pub).strip()
+
+                    print("Normalized pub text:", pub_text)
+                    date_filed = self.find_published_date(pub_text)
+
             else:
                 date_filed = f"{self.current_year}-07-01"
                 date_filed_is_approximate = True
@@ -75,10 +101,13 @@ class Site(OpinionSiteLinear):
             pdf_url = row.get("href")
             if not pdf_url.startswith('http'):
                 pdf_url="https://www.jud.ct.gov/external/supapp/"+pdf_url
+
+            import re
+            clean_title = re.sub(r"[^\x00-\x7F]+", "", name).strip()
             self.cases.append(
                 {
                     "url": pdf_url,
-                    "name": name,
+                    "name": clean_title,
                     "docket": dockets.split(', '),
                     "date": date_filed,
                     "date_filed_is_approximate": date_filed_is_approximate,
@@ -179,7 +208,7 @@ class Site(OpinionSiteLinear):
         from lxml import html
 
         # ---- PROXY ----
-        proxy = "http://192.126.184.28:8800"
+        proxy = "http://23.236.154.202:8800"
         proxies = {
             "http": proxy,
             "https": proxy,
@@ -191,11 +220,11 @@ class Site(OpinionSiteLinear):
             "Accept-Encoding": "gzip, deflate, br, zstd",
             "Accept-Language": "en-US,en;q=0.5",
             "Connection": "keep-alive",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-User": "?1",
-            "Upgrade-Insecure-Requests": "1",
+            # "Sec-Fetch-Dest": "document",
+            # "Sec-Fetch-Mode": "navigate",
+            # "Sec-Fetch-Site": "none",
+            # "Sec-Fetch-User": "?1",
+            # "Upgrade-Insecure-Requests": "1",
             "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
         }
 
@@ -228,6 +257,100 @@ class Site(OpinionSiteLinear):
 
         # Return parsed HTML tree exactly as Juriscraper expects
         return html.fromstring(resp.text)
+
+    def download_pdf(self, data, objectId):
+        pdf_url = data.__getitem__('pdf_url')
+        html_url = data.__getitem__('html_url')
+        year = int(data.__getitem__('year'))
+        court_name = data.get('court_name')
+        court_type = data.get('court_type')
+
+        if str(court_type).__eq__('Federal'):
+            state_name=data.get('circuit')
+        else:
+            state_name = data.get('state')
+        opinion_type = data.get('opinion_type')
+
+        if str(opinion_type).__eq__("Oral Argument"):
+            path = "/synology/PDFs/US/juriscraper/" + court_type + "/" + state_name + "/" + court_name + "/" + "oral arguments/" + str(year)
+        else:
+            path = "/synology/PDFs/US/juriscraper/" + court_type + "/" + state_name + "/" + court_name + "/" + str(year)
+
+        obj_id = str(objectId)
+        download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
+
+        if pdf_url.__eq__("") or (pdf_url is None) or pdf_url.__eq__("null"):
+            if html_url.__eq__("") or (html_url is None) or html_url.__eq__("null"):
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 2}})
+            else:
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 0}})
+        else:
+            i = 0
+            while True:
+                try:
+                    # os.makedirs(path, exist_ok=True)
+                    # us_proxy = CasemineUtil.get_us_proxy()
+                    # response = requests.get(
+                    #     url=pdf_url,
+                    #     headers={
+                    #         "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+                    #     },
+                    #     proxies={
+                    #         "http": f"http://{us_proxy.ip}:{us_proxy.port}",
+                    #         "https": f"http://{us_proxy.ip}:{us_proxy.port}"
+                    #     },
+                    #     timeout=120
+                    # )
+                    # response.raise_for_status()
+
+                    PROXY = {
+                        "server": "http://23.236.154.202:8800"
+                    }
+
+                    HEADERS = {
+                        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
+                        "Accept": "application/pdf,*/*;q=0.8",
+                        "Accept-Language": "en-US,en;q=0.5",
+                    }
+
+                    with sync_playwright() as p:
+                        browser = p.firefox.launch(
+                            headless=True,
+                            proxy=PROXY
+                        )
+                        context = browser.new_context(
+                            extra_http_headers=HEADERS)
+                        page = context.new_page()
+
+                        # 🔥 Akamai session warm-up (important for jud.ct.gov)
+                        page.goto(
+                            "https://www.jud.ct.gov/external/supapp/archiveAROsup25.htm",
+                            wait_until="networkidle"
+                        )
+
+                        # 🔥 Direct PDF fetch (NO expect_download)
+                        response = page.request.get(pdf_url)
+
+                        with open(download_pdf_path, 'wb') as file:
+                            file.write(response.body())
+                        self.judgements_collection.update_one({"_id": objectId},
+                                                              {"$set": {"processed": 0}})
+                    break
+                except requests.RequestException as e:
+                    if str(e).__contains__("Unable to connect to proxy"):
+                        i+=1
+                        if i>10:
+                            break
+                        else:
+                            continue
+                    else:
+                        print(f"Error while downloading the PDF: {e}")
+                        self.judgements_collection.update_many({"_id": objectId}, {
+                        "$set": {"processed": 2}})
+                        break
+        return download_pdf_path
 
     def make_backscrape_iterable(self, kwargs: dict) -> None:
         start = kwargs.get("backscrape_start")

@@ -9,7 +9,9 @@ History:
 """
 
 from datetime import date, datetime
-
+import requests
+import os
+from playwright.sync_api import sync_playwright
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 
@@ -58,6 +60,7 @@ class Site(OpinionSiteLinear):
         self.url = f"https://apps.maine.edu/SuperiorCourt/show_list.jsp?plaintiff=&defendant=&year={start_date.year}&code=&rule=&title=&number=&section=&Search=Search"
         self.parse()
         return 0
+
 
     def get_state_name(self):
         return "Maine"

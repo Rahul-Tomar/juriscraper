@@ -211,7 +211,10 @@ class Site(OpinionSiteLinear):
         update_query={}
         try:
             proxies = {
-                'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050', }
+                # 'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',
+                "http": "http://23.236.154.202:8800",
+                "https": "http://23.236.154.202:8800"
+            }
             scraper = cloudscraper.create_scraper()  # This handles Cloudflare challenges
             response = scraper.get(pdf_url, proxies=proxies)
             if pdf_url.endswith('.html') or pdf_url.endswith('.htm'):

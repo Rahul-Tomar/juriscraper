@@ -13,7 +13,9 @@ class Site(OpinionSiteLinear):
         self.court_code = "S.Ct"
         self.status = "Published"
         self.proxies={
-            'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',
+            # 'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',    156.241.229.113
+            "http": "http://156.241.229.113:8800",
+            "https": "http://156.241.229.113:8800"
         }
 
     def _process_html(self) -> None:

@@ -35,8 +35,16 @@ class Site(OpinionSiteLinear):
             "]//td[2]//@href"
         )
         # parse 2 most recent Opinon/PerCuriam sub-pages
+        print(path)
         urls = landing_page.xpath(path)
-        return [self._get_subpage_html_by_url(url) for url in urls]
+        base_url = "https://www.lasc.org"
+
+        normalized_urls = []
+        for url in urls:
+            if not url.startswith("http"):
+                url = base_url.rstrip("/") + "/" + url.lstrip("/")
+            normalized_urls.append(url)
+        return [self._get_subpage_html_by_url(url) for url in normalized_urls]
 
     def _process_html(self):
         for h in self.html:

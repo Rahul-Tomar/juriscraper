@@ -6,19 +6,28 @@
 # Date: 2014-07-05
 from datetime import datetime
 
-from juriscraper.opinions.united_states.state import okla
+from juriscraper.opinions.united_states.state import okla, oklacivapp
 import requests
+from typing import Tuple, Optional, List
+
 from lxml import html
 from casemine.proxy_manager import ProxyManager
 from sample_caller import logger
 import time
 import re
 
-class Site(okla.Site):
+class Site(oklacivapp.Site):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.url = f"https://www.oscn.net/applications/oscn/Index.asp?ftdb=STOKCSCR&year={self.year}&level=1"
+        self._CASE_META_PATTERN = re.compile(
+            r'^(?P<docket>\d{4}\s+OK\s+CR\s+\d+),\s+'
+            r'(?:(?P<citation>\d+\s+P\.3d\s+\d+),\s+)?'
+            r'(?P<date>\d{2}/\d{2}/\d{4}),\s+'
+            r'(?P<name>.+)$'
+        )
 
     def _process_html(self, start_date : datetime , end_date : datetime):
         base_url = "https://www.oscn.net/dockets/"
@@ -40,26 +49,30 @@ class Site(okla.Site):
                 self.proxy_usage_count = 0
 
             text = row.xpath(".//a/text()")
+            print(text)
             url = row.xpath(".//a/@href")[0]
             case = text[0]
             parts = case.split(", ")
 
 
             docket, citation, date, name = None, None, None, None
+            case_text = text[0].replace("\xa0", " ").strip()
+            docket, citation, date, name = self.extract_case_metadata(case_text)
 
-            if len(parts)==2:
-                docket , name = parts
-                date = "01/01/2024"
-            elif len(parts)==4:
-                docket, citation, date, name = parts
-                citation = citation.replace("\xa0"," ")
 
-            elif len(parts)==3:
-                if "/" in parts[1]:
-                    docket, date, name = parts
-                else:
-                    docket, citation, name = parts
-                    date = "01/01/2024"
+            # if len(parts)==2:
+            #     docket , name = parts
+            #     date = "01/01/2024"
+            # elif len(parts)==4:
+            #     docket, citation, date, name = parts
+            #     citation = citation.replace("\xa0"," ")
+            #
+            # elif len(parts)==3:
+            #     if "/" in parts[1]:
+            #         docket, date, name = parts
+            #     else:
+            #         docket, citation, name = parts
+            #         date = "01/01/2024"
             if datetime.strptime(date.strip(),
                                  "%m/%d/%Y") >= start_date and datetime.strptime(
                 date.strip(), "%m/%d/%Y") <= end_date:
@@ -70,6 +83,8 @@ class Site(okla.Site):
                     print(f"getting result of docket {docket}")
                     print(f"hitting url {url} for html and cite html")
                     time.sleep(4)
+                    if not url.startswith("https"):
+                        url = "https://www.oscn.net/applications/oscn/" + url
                     response_html = requests.get(url,
                                                  headers=self.request["headers"],
                                                  proxies=self.proxies)
@@ -161,7 +176,8 @@ class Site(okla.Site):
                 cit_arr = []
                 if citation is not None:
                     cit_arr.append(citation)
-
+                if not pdf_url.startswith("https"):
+                    pdf_url="https://www.oscn.net/applications/oscn/"+pdf_url
                 self.cases.append(
                     {
                         "date": date,
@@ -176,6 +192,32 @@ class Site(okla.Site):
                     }
                 )
                 self.proxy_usage_count +=1
+
+    def extract_case_metadata(self, text: str) -> Tuple[
+        Optional[str], Optional[str], Optional[str], Optional[str]]:
+        """
+        Extracts docket, citation (optional), date, and case name from a citation line.
+        Returns (docket, citation, date, name). Missing fields are None.
+        """
+
+        if not text:
+            return None, None, None, None
+
+        try:
+            match = self._CASE_META_PATTERN.match(text.strip())
+            if not match:
+                return None, None, None, None
+
+            docket = match.group("docket")
+            citation = match.group("citation")  # None if absent
+            date = match.group("date")
+            name = match.group("name").strip()
+
+            return docket, citation, date, name
+
+        except Exception:
+            # absolutely no crashes in crawl pipeline
+            return None, None, None, None
 
     def get_court_name(self):
         return "Okla. Crim. App."

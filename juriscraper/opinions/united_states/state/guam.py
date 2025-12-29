@@ -23,7 +23,7 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         self.status = "Published"  # The year dropdown goes back to 1990, but the Court wasn't  # created until 1996 and there are no opinions posted for  # prior years.  # self.back_scrape_iterable = range(1996, self._year)
         self.proxies = {
-            'http': 'http://192.126.184.28:8800', 'https': 'http://192.126.184.28:8800', }
+            'http': 'http://23.236.154.202:8800', 'https': 'http://23.236.154.202:8800', }
 
     def _process_html(self) -> None:
         """Process HTML into case objects

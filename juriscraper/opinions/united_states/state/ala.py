@@ -10,6 +10,7 @@ History:
 """
 
 import json
+from datetime import datetime
 
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
@@ -52,3 +53,6 @@ class Site(OpinionSiteLinear):
                         "judge": author,
                     }
                 )
+
+    def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
+        self.parse()

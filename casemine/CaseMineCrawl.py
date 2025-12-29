@@ -42,7 +42,7 @@ class CaseMineCrawl:
 
     def get_crawl_till(self):
         return self.crawled_till
-    
+
     def crawling(self, crawled_till) -> int:
         # Initialize the list with retro months
         retro_months = [-1, -3, -6, -12]
@@ -82,7 +82,7 @@ class CaseMineCrawl:
         for self.start_date, self.end_date in date_ranges.items():
             # print(f"{datetime.strptime(self.crawled_till,'%d/%m/%Y')} --> {datetime.now()}")
             count = count + self.crawling_range( datetime.strptime(self.crawled_till,"%d/%m/%Y"), datetime.now())
-            # count=count+self.crawling_range(datetime(2025,1,1),datetime.today())
+            # count=count+self.crawling_range(datetime(2025,4,1),datetime.today())
         return count
 
     def update_ark_data(self, data):

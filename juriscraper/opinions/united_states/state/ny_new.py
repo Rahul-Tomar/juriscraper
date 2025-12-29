@@ -7,7 +7,6 @@ from bs4 import BeautifulSoup
 import cloudscraper
 import pdfkit
 from typing_extensions import override
-
 from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
@@ -21,7 +20,9 @@ class Site(OpinionSiteLinear):
         self.CURRENT_URL = self.BASE_URL + f"{self.court_type}.shtml"
         self.ARCHIVE_URL = self.BASE_URL + "{court_type}_{year}_{month}.shtml"
         self.proxies = {
-            'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',
+            # 'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',
+             "http": "http://23.236.154.202:8800",
+            "https": "http://23.236.154.202:8800"
         }
         self.scraper = cloudscraper.create_scraper()
 
@@ -163,7 +164,10 @@ class Site(OpinionSiteLinear):
         update_query={}
         try:
             proxies = {
-                'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050', }
+                # 'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',
+                "http": "http://23.236.154.202:8800",
+                "https": "http://23.236.154.202:8800"
+                }
             scraper = cloudscraper.create_scraper()  # This handles Cloudflare challenges
             response = scraper.get(pdf_url, proxies=proxies)
             if pdf_url.endswith('.html') or pdf_url.endswith('.htm'):

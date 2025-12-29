@@ -16,7 +16,7 @@ class Site(OpinionSiteLinear):
         self.url = f"https://www.courts.ca.gov/cms/opinions.htm?Courts={self.court_code}"
         self.status = "Published"
         self.proxies = {
-            "http": "http://192.126.182.41:8800", "https": "http://192.126.182.41:8800"}
+            "http": "http://23.236.154.202:8800", "https": "http://23.236.154.202:8800"}
         self.request["verify"] = False
 
     def _process_html(self) -> None:

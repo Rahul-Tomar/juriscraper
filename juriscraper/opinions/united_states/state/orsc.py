@@ -3,8 +3,11 @@ History:
  - 2014-08-05: Adapted scraper to have year-based URLs.
  - 2023-11-18: Fixed and updated
 """
+import requests
+from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 
-
+from casemine.casemine_util import CasemineUtil
 from juriscraper.DeferringList import DeferringList
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 import re
@@ -45,17 +48,63 @@ class Site(OpinionSiteLinear):
 
     def fetch_url_json(self, identifier):
         """"""
-        url = f"https://ojd.contentdm.oclc.org/digital/bl/dmwebservices/index.php?q=dmQuery/{self.court_code}/identi^{identifier}^all^and/title!subjec!descri!dmrecord/title/1024/1/0/0/0/0/json"
-        json = self.request["session"].get(url).json()
-        try:
-            num = json['records'][0]['pointer']
-        except:
-            num = "null"
-        return f"https://ojd.contentdm.oclc.org/digital/api/collection/{self.court_code}/id/{num}/download"
+        # url = f"https://ojd.contentdm.oclc.org/digital/bl/dmwebservices/index.php?q=dmQuery/{self.court_code}/identi^{identifier}^all^and/title!subjec!descri!dmrecord/title/1024/1/0/0/0/0/json"
+        url = f"http://cdm17027.contentdm.oclc.org/digital/search/collection/p17027coll3%21p17027coll5%21p17027coll6/searchterm/{identifier}/field/all/mode/all/conn/all/order/date/ad/desc"
+        print(url)
+        with sync_playwright() as p:
+            browser = p.firefox.launch(
+                headless=True,
+                proxy={"server": "http://23.236.154.202:8800"})
+            context = browser.new_context()
+            page = context.new_page()
+
+            page.goto(
+                url,
+                timeout=60000,
+                wait_until="domcontentloaded"
+            )
+
+            # Wait for React-rendered results
+            page.wait_for_selector(
+                "a.SearchResult-container",
+                timeout=30000
+            )
+
+            href = page.locator(
+                "a.SearchResult-container").first.get_attribute("href")
+
+            if href and href.startswith("/"):
+                href = "https://cdm17027.contentdm.oclc.org" + href
+
+            id = self.extract_contentdm_id(href)
+            url = f"https://cdm17027.contentdm.oclc.org/digital/api/collection/p17027coll3/id/{id}/download"
+            # print(url)
+            return url , id
+
+
+        # json = self.request["session"].get(url).json()
+        # try:
+        #     num = json['records'][0]['pointer']
+        # except:
+        #     num = "null"
+        # return f"https://ojd.contentdm.oclc.org/digital/api/collection/{self.court_code}/id/{num}/download"
+
+    def extract_contentdm_id(self,url: str) -> str | None:
+        if not isinstance(url, str):
+            return None
+
+        match = re.search(r"/id/(\d+)", url)
+        return match.group(1) if match else None
 
     def _process_html(self, start_date: datetime, end_date: datetime):
         for header in self.html.xpath("//h4//a/parent::h4"):
             date_string = header.text_content().strip()
+            parsed_date = datetime.strptime(date_string, "%m/%d/%Y")
+            formatted_date = parsed_date.strftime("%d/%m/%Y")
+
+            res = CasemineUtil.compare_date(self.crawled_till, formatted_date)
+            if res == 1:
+                continue
             pdf_url = ""
             if not date_string:
                 continue
@@ -74,10 +123,10 @@ class Site(OpinionSiteLinear):
                         name = text.split(")", 1)[-1].strip()
                         citation = text.split("(", 1)[0].strip()
                         citation = re.sub(r'\s+', ' ', citation)
-                        url = self.fetch_url_json(docket)
+                        url , pdf_url_id = self.fetch_url_json(docket)
                         if "null" in url :
                             url = anchors[0].xpath("./@href")[0]
-                        pdf_url_id = self.get_pdf_id(docket, name)
+                        # pdf_url_id = self.get_pdf_id(docket, name)
 
                         if (pdf_url_id is not None):
                             pdf_url = f"https://cdm17027.contentdm.oclc.org/digital/collection/{self.court_code}/id/{pdf_url_id}/rec"
@@ -85,7 +134,6 @@ class Site(OpinionSiteLinear):
                         else:
                             pdf_url=""
                             response_html = ""
-
 
                         self.cases.append(
                             {

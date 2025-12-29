@@ -33,13 +33,15 @@ class Site(OpinionSiteLinear):
 
             self.cases.append({
                 "date": date,
-                "title": title,
+                "name": title,
                 "summary": summary,
-                "pdf_url": pdf_url,
-                "docket": docket})
+                "url": pdf_url,
+                "docket": docket
+
+            })
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        for year in range(start_date.year, end_date.year):
+        for year in range(2024, end_date.year):
             page = 1
             flag = True
             while flag:
@@ -48,6 +50,9 @@ class Site(OpinionSiteLinear):
                 next_page = self.html.xpath('//li[a[contains(normalize-space(.), "Next Page →")]]')
                 if next_page is None:
                     flag=False
+                if len(next_page) == 0:
+                    flag = False
+                page=page+1
                 self.downloader_executed=False
         return 0
 

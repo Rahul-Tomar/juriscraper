@@ -8,10 +8,12 @@ History:
 """
 import re
 from datetime import datetime
+from playwright.sync_api import sync_playwright
 
 import requests
 from lxml import html
 
+from casemine.casemine_util import CasemineUtil
 from juriscraper.DeferringList import DeferringList
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
@@ -29,16 +31,48 @@ class Site(OpinionSiteLinear):
 
     def fetch_url_json(self, identifier):
         """"""
-        url = f"https://ojd.contentdm.oclc.org/digital/bl/dmwebservices/index.php?q=dmQuery/{self.court_code}/identi^{identifier}^all^and/title!subjec!descri!dmrecord/title/1024/1/0/0/0/0/json"
-        json = self.request["session"].get(url).json()
-        try:
-            pdf_id = json['records'][0]['pointer']
-        except:
-            pdf_id=""
-        return f"https://ojd.contentdm.oclc.org/digital/api/collection/{self.court_code}/id/{pdf_id}/download"
+        # url = f"https://ojd.contentdm.oclc.org/digital/bl/dmwebservices/index.php?q=dmQuery/{self.court_code}/identi^{identifier}^all^and/title!subjec!descri!dmrecord/title/1024/1/0/0/0/0/json"
+        url = f"https://cdm17027.contentdm.oclc.org/digital/search/collection/p17027coll3%21p17027coll5%21p17027coll6/searchterm/{identifier}/field/all/mode/all/conn/all/order/date/ad/desc"
+        print(url)
+        with sync_playwright() as p:
+            browser = p.firefox.launch(
+                headless=True,
+                proxy={"server": "http://23.236.154.202:8800"})
+            context = browser.new_context()
+            page = context.new_page()
+
+            page.goto(
+                url,
+                timeout=60000,
+                wait_until="domcontentloaded"
+            )
+
+            # Wait for React-rendered results
+            page.wait_for_selector(
+                "a.SearchResult-container",
+                timeout=30000
+            )
+
+            href = page.locator(
+                "a.SearchResult-container").first.get_attribute("href")
+
+            if href and href.startswith("/"):
+                href = "https://cdm17027.contentdm.oclc.org" + href
+
+            # id = self.extract_contentdm_id(href)
+            url = f"https://cdm17027.contentdm.oclc.org/digital/api/collection/p17027coll3/id/{id}/download"
+            # print(url)
+            return url
+        # json = self.request["session"].get(url).json()
+        # try:
+        #     pdf_id = json['records'][0]['pointer']
+        # except:
+        #     pdf_id=""
+        # return f"https://ojd.contentdm.oclc.org/digital/api/collection/{self.court_code}/id/{pdf_id}/download"
 
     def get_pdf_id(self,docket : str, name : str):
         u = f"https://cdm17027.contentdm.oclc.org/digital/api/search/collection/p17027coll3!p17027coll5!p17027coll6/searchterm/{docket}/field/all/mode/all/conn/all/order/date/ad/desc/maxRecords/50"
+        print(u)
         url_json = self.request["session"].get(u,headers=self.request["headers"]).json()
 
         if url_json["totalResults"]==0:
@@ -63,6 +97,12 @@ class Site(OpinionSiteLinear):
     def _process_html(self, start_date: datetime, end_date: datetime):
         for header in self.html.xpath("//h4//a/parent::h4"):
             date_string = header.text_content().strip()
+            parsed_date = datetime.strptime(date_string, "%m/%d/%Y")
+            formatted_date = parsed_date.strftime("%d/%m/%Y")
+
+            res = CasemineUtil.compare_date(self.crawled_till, formatted_date)
+            if res == 1:
+                continue
             pdf_url = ""
             if not date_string:
                 continue

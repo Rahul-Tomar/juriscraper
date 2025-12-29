@@ -10,7 +10,7 @@ from juriscraper.opinions.united_states.state import lactapp_new
 
 FOLDERS_TO_SCAN = ["juriscraper/opinions/united_states/state"]
 RESTRICTED_CLASSES = { # Temporary classes
-   "Practice1","ariz_2","arizctapp_div_1","coloctapp","ark_ag","fla_new","lactapp_new","okla","oklaag","oklacivapp","oklacrimapp","alaska","coloctapp_u",
+   "Practice1","ariz_2","arizctapp_div_1","ark_ag","fla_new","lactapp_new","okla","oklaag","oklacivapp","oklacrimapp","coloctapp_u",
     # permanent classes
     "alacivapp", "alacrimapp", "calag", "haw_beginningofyear", "hawapp_beginningofyear", "ind", "indctapp", "indtc", "mdag", "miss", "miss_beginningofyear", "missctapp", "missctapp_beginningofyear",
     "minnag", "nytrial", "nyag", "sc", "scctapp", "ala", "masslandct", "or", "ri_dist", "ri_trf_tri", "nytrial","calctapp_u","ny","nyappdiv_1st","nyappdiv_2nd","nyappdiv_3rd","nyappdiv_4th","nyappterm_1st","nyappterm_2nd",

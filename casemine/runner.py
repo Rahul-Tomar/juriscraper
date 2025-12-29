@@ -2,12 +2,50 @@ import ast
 from datetime import datetime
 
 from casemine.casemine_util import CasemineUtil
-from juriscraper.opinions.united_states.state import arkctapp, mich_orders, ny_new, nyappdiv1_motions, nyappdiv2_motions, nyappdiv4_motions, nyappdiv_1st_new, nyappdiv_2nd_new, nyappdiv_3rd_new, nyappdiv_4th_new, nyappterm1_motions, nyappterm_1st_new, nyappterm_2nd_new, nycivil_motions, nycrim_motions
+# from juriscraper.opinions.united_states.federal_district import testtt
+from juriscraper.opinions.united_states.state import arkctapp, mich_orders, \
+    ny_new, nyappdiv1_motions, nyappdiv2_motions, nyappdiv4_motions, \
+    nyappdiv_1st_new, nyappdiv_2nd_new, nyappdiv_3rd_new, nyappdiv_4th_new, \
+    nyappterm1_motions, nyappterm_1st_new, nyappterm_2nd_new, nycivil_motions, \
+    nycrim_motions, pasuperct, mass, nycityct, ga_granted, okla, \
+    nysupct_commercial, kan_p, nycrimct, nyjustct, nh_u, guam, connappct, \
+    lactapp_1, fla_new, alaskactapp_mo, texapp_4, kan_u, nyfamct, conn, \
+    mo_min_or_sc, nh_p, fla, texcrimapp, texapp_6, ohioctapp_12, texapp_14, \
+    oklacivapp, ark_admin_law, ohio, texapp_7, ohioctapp_1, sd, texag, \
+    vtsuperct_environmental, ohioctapp_4, wva, kanctapp_u, ny, ariz_2, \
+    arizctapp_div_1, ariz, massappct_u, lactapp_new, cal, nyappterm2_motions, \
+    ga_interlocutory, haw, kanctapp_p, minn, tenn, tennctapp, hawapp, \
+    tenncrimapp, la_ag, kyctapp, vtsuperct_civil, ohioctapp_10, \
+    neb_ctapp_all_op, ohioctcl_beginningofyear, texapp_8, arizctapp_div_2, \
+    vtsuperct_probate, calctapp_3rd, me_orders, texapp_9, gactapp, texapp_12, \
+    calctapp_new_rg, me, ohioctapp_3, minnctapp_u, calctapp_4th_div1, \
+    fladistctapp_2, mdctspecapp, nj, wis_ordr, oklaag, deljustpeacect, \
+    delaware, nm, iowa, wash_ag, iowactapp, ark, nevapp, delfamct, delctcompl, \
+    nmctapp, nev_u, la, nev, colo, minnctapp_p, idaho_civil, \
+    idahoctapp_criminal, alaska, delch, delsuperct, ariz_tax, colo_u, \
+    coloctapp, coloctapp_u, fladistctapp_1, fladistctapp_3, fladistctapp_4, \
+    fladistctapp_5, fladistctapp_6, orsc, texapp_11, tex, washctapp_u, \
+    washctapp_p, alaska_mo, ky, calctapp_new, mo, nc, miss, ohioctapp_9, neb, \
+    nmariana, calctapp_app_div, ga_discretionary, illappct, michctapp_orders, \
+    washctapp_p_inpart, njtaxct_u, calctapp_new_u, ohioctapp_8, mont, wash, \
+    wvactapp, nebctapp, calctapp_1st, dc, njsuperctappdiv_u, alaskactapp_sd, \
+    massappct, njsuperctappdiv_p, nevapp_u, tex_new, nycountyct, \
+    nyappdiv3_motions, orctapp, nysupct, ala, alaska_orders, alaskactapp, \
+    alaskactapp_bo, alaskactapp_orders, calctapp_2nd, calctapp_4th_div2, \
+    calctapp_4th_div3, calctapp_5th, calctapp_6th, calag, ga, idaho_criminal, \
+    idahoctapp_civil, idahoctapp_per_curiam, idahoctapp_u, ill, mass_dia, \
+    masslandct, md, md_unreported, mdag, mesuperct, mich, michctapp, minnag, \
+    neb_ag, neb_sup_all_op, ncctapp, nd, wis, wisctapp, vt, vt_criminal, \
+    vtsuperct_family, va, vactapp_p, utah, utahctapp, sc, scapp_p, scctapp, \
+    scscop_p, ri, ri_ordr, ri_supr, ri_trf_tri, pa, pacommwct, nydistct, \
+    oklacrimapp, cal_work, alacivapp, ark_work_comp, ark_ag, nyappdiv_1st, \
+    cal_work_panel, nycivct, nyclaimsct, nysurct, cal_work_sigpanel, \
+    conn_super, tex_jpml, conn_work
 
 # Create a site object
-site = arkctapp.Site()
+site = wisctapp.Site()
 
-site.execute_job("arkctapp")
+site.execute_job("wisctapp")
 
 # print(f"Total judgements: {site.cases.__len__()}")
 
@@ -45,10 +83,28 @@ for opinion in site:
         if docket == '':
             docket = []
         else:
-            docket = ast.literal_eval(docket)
+            try:
+                # Try to evaluate as Python literal
+                docket = ast.literal_eval(docket)
+            except (SyntaxError, ValueError):
+                # If it fails, just use it as a string
+                docket = [str(docket)]
+
     else:
         docket = []
 
+
+    revision_status = opinion.get('revision_status')
+    if revision_status is not None:
+        try:
+            revision_status = int(revision_status)  # type cast to integer
+        except ValueError:
+            revision_status = ''  # fallback if it cannot be cast
+    else:
+        revision_status = ''
+
+    lower_court_info = opinion.get('lower_court_info')
+    # if lower_court_info is not None :
 
     parallel_citation = opinion.get('parallel_citations')
     if parallel_citation is None:
@@ -102,6 +158,7 @@ for opinion in site:
         'html_url':check_none(opinion.get('html_urls')),
         'response_html': check_none(opinion.get('response_htmls')),
         # additional
+        'revision_status':revision_status,
         'crawledAt': datetime.now(),
         'processed': 333,
         'court_name': court_name,
@@ -109,12 +166,17 @@ for opinion in site:
         'class_name': class_name,
         'year': year,
     }
+
+    if isinstance(site, tex_new.Site):
+        data['lower_court_info'] = opinion.get('lower_court_info', [])
+
     if court_type.__eq__('Federal'):
         data["circuit"] = state_name
         data['teaser']= check_none(opinion.get("teasers"))
     else:
         data["state"] = state_name
-    # print(data)
+
+    print(data)
     flag = site._process_opinion(data)
     if flag:
         print(f'{ctr} - {data}')

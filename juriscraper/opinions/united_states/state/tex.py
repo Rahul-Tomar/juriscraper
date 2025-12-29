@@ -4,7 +4,8 @@ from juriscraper.AbstractSite import logger
 from juriscraper.DeferringList import DeferringList
 from juriscraper.lib.string_utils import titlecase
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
-
+import base64
+import zlib
 
 class Site(OpinionSiteLinear):
     param_date_format = "%-m/%-d/%Y"
@@ -42,11 +43,11 @@ class Site(OpinionSiteLinear):
         :return: None
         """
         start_date_str = self.start_date.strftime(self.param_date_format)
+
         end_date_str = self.end_date.strftime(self.param_date_format)
 
         from_date_param = self.make_date_param(self.start_date, start_date_str)
         to_date_param = self.make_date_param(self.end_date, end_date_str)
-
         self.parameters = {}
         for hidden in self.html.xpath("//input[@type='hidden']"):
             value = hidden.xpath("@value")[0] if hidden.xpath("@value") else ""
@@ -54,24 +55,22 @@ class Site(OpinionSiteLinear):
 
         self.parameters.update(
             {
-                "ctl00$ContentPlaceHolder1$SearchType": "rbSearchByDocument",  # "Document Search" radio button
-                "ctl00$ContentPlaceHolder1$dtDocumentFrom": str(
-                    self.start_date
-                ),
-                "ctl00$ContentPlaceHolder1$dtDocumentFrom$dateInput": start_date_str,
-                "ctl00$ContentPlaceHolder1$dtDocumentTo": str(self.end_date),
-                "ctl00$ContentPlaceHolder1$dtDocumentTo$dateInput": end_date_str,
-                "ctl00_ContentPlaceHolder1_dtDocumentFrom_dateInput_ClientState": from_date_param,
-                "ctl00_ContentPlaceHolder1_dtDocumentTo_dateInput_ClientState": to_date_param,
-                "ctl00$ContentPlaceHolder1$btnSearchText": "Search",
-                "ctl00$ContentPlaceHolder1$chkListDocTypes$0": "on",  # "Opinion" checkbox
-                "ctl00$ContentPlaceHolder1$chkListDocTypes$1": "on",  # "Opinion" checkbox
-                f"ctl00$ContentPlaceHolder1$chkListCourts${self.checkbox}": "on",  # Court checkbox
-                "ctl00$ContentPlaceHolder1$txtSearchText": "",
-                "ctl00_ContentPlaceHolder1_dtDocumentFrom_ClientState": '{"minDateStr":"1900-01-01-00-00-00","maxDateStr":"2099-12-31-00-00-00"}',
-                "ctl00_ContentPlaceHolder1_dtDocumentTo_ClientState": '{"minDateStr":"1900-01-01-00-00-00","maxDateStr":"2099-12-31-00-00-00"}',
-                "ctl00$ContentPlaceHolder1$Stemming": "on",
-                "ctl00$ContentPlaceHolder1$Fuzziness": "0",
+        "ctl00$ContentPlaceHolder1$SearchType": "rbSearchByCase",
+        "ctl00$ContentPlaceHolder1$olCaseType": "0",
+        "ctl00$ContentPlaceHolder1$chkListCourts$0": "on",
+
+        # Hardcoded dates: Aug 1 → today
+        "ctl00$ContentPlaceHolder1$txtDateFiledStart": "2025-08-01",
+        "ctl00$ContentPlaceHolder1$txtDateFiledStart$dateInput": "08/01/2025",
+        "ctl00_ContentPlaceHolder1_txtDateFiledStart_dateInput_ClientState": '{"enabled":true,"emptyMessage":"","validationText":"2025-08-01-00-00-00","valueAsString":"2025-08-01-00-00-00","minDateStr":"1900-01-01-00-00-00","maxDateStr":"2099-12-31-00-00-00","lastSetTextBoxValue":"08/01/2025"}',
+
+        "ctl00$ContentPlaceHolder1$txtDateFiledEnd": "2025-11-21",
+        "ctl00$ContentPlaceHolder1$txtDateFiledEnd$dateInput": "11/21/2025",
+        "ctl00_ContentPlaceHolder1_txtDateFiledEnd_dateInput_ClientState": '{"enabled":true,"emptyMessage":"","validationText":"2025-11-21-00-00-00","valueAsString":"2025-11-21-00-00-00","minDateStr":"1900-01-01-00-00-00","maxDateStr":"2099-12-31-00-00-00","lastSetTextBoxValue":"11/21/2025"}',
+
+        "ctl00$ContentPlaceHolder1$btnSearch": "Search",
+        "ctl00$ContentPlaceHolder1$hdnCount": "",
+        "ctl00$ContentPlaceHolder1$hdnMode": "false"
             }
         )
 
@@ -82,8 +81,8 @@ class Site(OpinionSiteLinear):
         if self.next_page:
             self.parameters[self.next_page[0].xpath("@name")[0]] = ""
             #added
-            # self.parameters["__EVENTTARGET"] = self.next_page[0].get("name")
-            # self.parameters["__EVENTARGUMENT"] = ""
+            self.parameters["__EVENTTARGET"] = self.next_page[0].get("name")
+            self.parameters["__EVENTARGUMENT"] = ""
 
     def _process_html(self) -> None:
         """Process HTML and paginates if needed
@@ -102,6 +101,7 @@ class Site(OpinionSiteLinear):
             # In texas we also have to ping the case page to get the name
             # this is unfortunately part of the process.
             self.seeds.append(row.xpath(".//a")[2].get("href"))
+            print(row.xpath("td[2]")[0].text_content())
             self.cases.append(
                 {
                     "date": row.xpath("td[2]")[0].text_content(),

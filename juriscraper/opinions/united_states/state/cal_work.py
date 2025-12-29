@@ -16,6 +16,10 @@ class Site(OpinionSiteLinear):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.url = 'https://www.dir.ca.gov/wcab/wcab_enbanc.htm'
+        self.proxies={
+            'http': 'http://23.236.154.202:8800',
+            'https': 'http://23.236.154.202:8800',
+        }
         # self.status = 'Unpublished'
 
     def _process_html(self, start :int , end :int) -> None:

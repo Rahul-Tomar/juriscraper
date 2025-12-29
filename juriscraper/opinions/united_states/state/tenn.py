@@ -4,9 +4,11 @@ CourtID: tenn
 Court Short Name: Tenn.
 """
 from datetime import datetime
-
+import requests
+import os
 from typing_extensions import override
 
+from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 from juriscraper.lib.html_utils import fix_links_in_lxml_tree
 
@@ -17,8 +19,8 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         self.status = "Published"
         self.proxies = {
-            'http': 'http://192.126.184.211:8800',
-            'https': 'http://192.126.184.211:8800',
+            'http': 'http://23.236.197.227:8800',
+            'https': 'http://23.236.197.227:8800',
         }
         self.request["headers"]= {
             "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -116,6 +118,83 @@ class Site(OpinionSiteLinear):
                 flag = False
             self.downloader_executed = False
         return 0
+
+    def download_pdf(self, data, objectId):
+        pdf_url = data.__getitem__('pdf_url')
+        html_url = data.__getitem__('html_url')
+        year = int(data.__getitem__('year'))
+        court_name = data.get('court_name')
+        court_type = data.get('court_type')
+
+        if str(court_type).__eq__('Federal'):
+            state_name=data.get('circuit')
+        else:
+            state_name = data.get('state')
+        opinion_type = data.get('opinion_type')
+
+        if str(opinion_type).__eq__("Oral Argument"):
+            path = "/synology/PDFs/US/juriscraper/" + court_type + "/" + state_name + "/" + court_name + "/" + "oral arguments/" + str(year)
+        else:
+            path = "/synology/PDFs/US/juriscraper/" + court_type + "/" + state_name + "/" + court_name + "/" + str(year)
+
+        obj_id = str(objectId)
+        download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
+
+        if pdf_url.__eq__("") or (pdf_url is None) or pdf_url.__eq__("null"):
+            if html_url.__eq__("") or (html_url is None) or html_url.__eq__("null"):
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 2}})
+            else:
+                self.judgements_collection.update_one({"_id": objectId}, {
+                    "$set": {"processed": 0}})
+        else:
+            i = 0
+            while True:
+                try:
+                    os.makedirs(path, exist_ok=True)
+                    us_proxy = CasemineUtil.get_us_proxy()
+                    response = requests.get(
+                        url=pdf_url,
+                        headers={
+                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                            "Accept-Encoding": "gzip, deflate, br, zstd",
+                            "Accept-Language": "en-US,en;q=0.5",
+                            "Connection": "keep-alive",
+                            "Cookie": "_ga_RTSNWWBCT9=GS2.1.s1764148111$o8$g1$t1764149277$j60$l0$h0; _ga=GA1.2.2060124310.1745220238",
+                            "Host": "www.tncourts.gov",
+                            "Priority": "u=0, i",
+                            "Sec-Fetch-Dest": "document",
+                            "Sec-Fetch-Mode": "navigate",
+                            "Sec-Fetch-Site": "none",
+                            "Sec-Fetch-User": "?1",
+                            "Upgrade-Insecure-Requests": "1",
+                            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+                        },
+                        proxies={
+                            "http": f"http://{us_proxy.ip}:{us_proxy.port}",
+                            "https": f"http://{us_proxy.ip}:{us_proxy.port}"
+                        },
+                        timeout=120
+                    )
+                    response.raise_for_status()
+                    with open(download_pdf_path, 'wb') as file:
+                        file.write(response.content)
+                    self.judgements_collection.update_one({"_id": objectId},
+                                                          {"$set": {"processed": 0}})
+                    break
+                except requests.RequestException as e:
+                    if str(e).__contains__("Unable to connect to proxy"):
+                        i+=1
+                        if i>10:
+                            break
+                        else:
+                            continue
+                    else:
+                        print(f"Error while downloading the PDF: {e}")
+                        self.judgements_collection.update_many({"_id": objectId}, {
+                        "$set": {"processed": 2}})
+                        break
+        return download_pdf_path
 
     def get_state_name(self):
         return "Tennessee"

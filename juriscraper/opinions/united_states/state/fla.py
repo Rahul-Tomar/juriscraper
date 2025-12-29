@@ -27,8 +27,8 @@ class Site(OpinionSiteLinear):
         self.status = "Published"
 
         self.proxy = {
-            "http": "http://192.126.184.28:8800",
-            "https": "http://192.126.184.28:8800",
+            "http": "http://23.236.154.202:8800",
+            "https": "http://23.236.154.202:8800",
         }
 
         self.data = None

@@ -28,7 +28,10 @@ class Site(OpinionSiteLinear):
         self.status = "Published"
         self.expected_content_types = ["text/html"]
         self.case_base_url = "https://www.oscn.net/dockets/GetCaseInformation.aspx?db=Appellate&number="
-
+        self.proxies= {
+            "http": "http://156.241.224.100:8800",
+            "https": "http://156.241.224.100:8800"
+        }
         self.proxy_usage_count = 0
         self._opt_attrs = [
             "adversary_numbers",
@@ -551,7 +554,7 @@ class Site(OpinionSiteLinear):
             try:
                 os.makedirs(path, exist_ok=True)
 
-                us_proxy = CasemineUtil.get_us_proxy()
+                # us_proxy = CasemineUtil.get_us_proxy()
 
                 response = requests.get(
                     url=pdf_url,
@@ -562,8 +565,10 @@ class Site(OpinionSiteLinear):
                         )
                     },
                     proxies={
-                        "http": f"http://{us_proxy.ip}:{us_proxy.port}",
-                        "https": f"http://{us_proxy.ip}:{us_proxy.port}"
+                        # "http": f"http://{us_proxy.ip}:{us_proxy.port}",
+                        # "https": f"http://{us_proxy.ip}:{us_proxy.port}"
+                        "http": "http://156.241.224.100:8800",
+                        "https": "http://156.241.224.100:8800"
                     },
                     timeout=120
                 )

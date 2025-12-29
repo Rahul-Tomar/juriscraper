@@ -35,6 +35,7 @@ class Site(OpinionSiteLinear):
         """
         for row in self.html.xpath("//table/tbody/tr[.//a]"):
             docket = row.xpath(".//a//strong/text()")[0].strip()
+            print(docket)
             # Citation may not exist (yet?)
             citation = row.xpath(".//strong/em/text()")
             cit = citation[0] if citation else ""
@@ -58,14 +59,21 @@ class Site(OpinionSiteLinear):
         self.url = f"https://oag.ca.gov/opinions/yearly-index?conclusion-year[value][year]={year}"
 
     def get_court_name(self):
-        return
+        return "Attorney General of California — Opinion"
+
+    def get_court_type(self):
+        return "state"
+
+    def get_state_name(self):
+        return "California"
 
     def get_class_name(self):
         return "calag"
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.year = end_date.year
-        self.url = f"https://oag.ca.gov/opinions/yearly-index?conclusion-year[value][year]={self.year}"
+        # self.url = f"https://oag.ca.gov/opinions/yearly-index?conclusion-year[value][year]={self.year}"
+        self.url = "https://oag.ca.gov/opinions/yearly-index?conclusion-year[value][year]=2012"
         self.back_scrape_iterable = list(range(1985, self.year + 1))
         self.parse()
         return 0

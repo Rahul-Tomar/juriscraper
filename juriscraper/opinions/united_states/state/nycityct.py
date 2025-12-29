@@ -30,7 +30,10 @@ class Site(nytrial.Site):
     @override
     def _download(self, request_dict={}):
         proxies = {
-            'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050', }
+            # 'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',
+            "http": "http://23.236.154.202:8800",
+            "https": "http://23.236.154.202:8800"
+             }
         scraper = cloudscraper.create_scraper()  # This handles Cloudflare challenges
         print(self.url)
         response = scraper.get(self.url, proxies=proxies)
