@@ -62,8 +62,8 @@ class AbstractSite(CaseMineCrawl):
         self.downloader_executed = False
         self.cookies = {}
         self.proxies = {
-            "http": "http://192.126.183.255:8800",
-            "https": "http://192.126.183.255:8800"
+            "http": "http://23.236.154.202:8800",
+            "https": "http://23.236.154.202:8800"
         }
 
         self.cnt = cnt or CaseNameTweaker()

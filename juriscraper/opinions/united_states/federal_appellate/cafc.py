@@ -31,33 +31,84 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
 
+    # def _process_html(self):
+    #     html_string = html.tostring(self.html, pretty_print=True).decode(
+    #         'utf-8')
+    #     soup = BeautifulSoup(html_string, 'html.parser')
+    #     content = soup.find('p').text
+    #     json_content = json.loads(content)
+    #     data = json_content['data']
+    #     if (len(data) == 0):
+    #         self.flag = False
+    #         return
+    #     for i in range(len(data)):
+    #         item = data[i]
+    #         date = item[0]
+    #         curr_date = datetime.strptime(date, "%m/%d/%Y").strftime("%d/%m/%Y")
+    #         res = CasemineUtil.compare_date(self.crawled_till, curr_date)
+    #         if res == 1:
+    #             return
+    #         docket = item[1]
+    #         origin = item[2]
+    #         type = item[3]
+    #         name = str(item[4].replace("</a>", "")).split("[")[0].strip()
+    #         status = item[5]
+    #         slug = item[6]
+    #         self.cases.append({"date": date, "docket": [docket],
+    #                            "url": f"https://www.cafc.uscourts.gov/{slug}",
+    #                            "name": name,
+    #                            "status": self._get_status(status.lower())})
+
     def _process_html(self):
-        html_string = html.tostring(self.html, pretty_print=True).decode(
-            'utf-8')
-        soup = BeautifulSoup(html_string, 'html.parser')
-        content = soup.find('p').text
-        json_content = json.loads(content)
-        data = json_content['data']
-        if (len(data) == 0):
+        # self.html already contains the JSON string from the AJAX response
+        try:
+            # Extract only the inner text, NOT HTML markup
+            raw = self.html.text_content().strip()
+
+            # Now this is real JSON → parse it
+            json_content = json.loads(raw)
+        except Exception as e:
+            # self.logger.error(f"CAF​C JSON parse error: {e}")
+            print(e)
             self.flag = False
             return
-        for i in range(len(data)):
-            item = data[i]
-            date = item[0]
-            curr_date = datetime.strptime(date, "%m/%d/%Y").strftime("%d/%m/%Y")
+
+        data = json_content.get("data", [])
+        if len(data) == 0:
+            self.flag = False
+            return
+
+        for item in data:
+
+            date = item[0]  # "12/08/2025"
+            curr_date = datetime.strptime(date, "%m/%d/%Y").strftime(
+                "%d/%m/%Y")
+
+            # Your date cutoff logic (unchanged)
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
             if res == 1:
                 return
+
             docket = item[1]
             origin = item[2]
             type = item[3]
-            name = str(item[4].replace("</a>", "")).split("[")[0].strip()
+
+            # Extract name from <a> safely using BeautifulSoup
+            name_html = item[4]
+            soup = BeautifulSoup(name_html, "html.parser")
+            name = soup.text.split("[")[0].strip()
+
             status = item[5]
             slug = item[6]
-            self.cases.append({"date": date, "docket": [docket],
-                               "url": f"https://www.cafc.uscourts.gov/{slug}",
-                               "name": name,
-                               "status": self._get_status(status.lower())})
+
+            # Append case dictionary exactly as your system expects
+            self.cases.append({
+                "date": date,
+                "docket": [docket],
+                "url": f"https://www.cafc.uscourts.gov/{slug}",
+                "name": name,
+                "status": self._get_status(status.lower())
+            })
 
     def _process_html_old(self) -> None:
         """Process the RSS feed.

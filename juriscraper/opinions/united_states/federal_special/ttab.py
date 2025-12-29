@@ -29,8 +29,12 @@ class Site(OpinionSiteLinear):
             for data in data_list:
                 # print(data)
                 docket = data['proceedingNumber']
-                pdf_url_code = data['documentId']
-                pdf_url = f"https://ttab-reading-room.uspto.gov/cms/rest/{pdf_url_code}"
+                pdf_url_code = data.get('documentId')
+                if not pdf_url_code:
+                    # print(f"Skipping entry without documentId: {data}")
+                    continue
+                pdf_url = f"https://ttab-reading-room.uspto.gov/cms/rest/{pdf_url_code.lstrip('/')}"
+
                 title = data['partyName']
 
                 summary = self.get_party_name(data).replace("\n"," ").replace("\t"," ")
@@ -125,7 +129,7 @@ class Site(OpinionSiteLinear):
             response = requests.get(url=pdf_url, headers={
                 "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux  x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"},
                                     proxies={
-                'http': "http://38.152.199.134:8800", 'https': "http://38.152.199.134:8800"
+                'http': "http://192.126.182.41:8800", 'https': "http://192.126.182.41:8800"
                                     },
                                     timeout=120)
             response.raise_for_status()

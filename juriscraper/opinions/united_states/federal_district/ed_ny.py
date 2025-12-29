@@ -18,4 +18,4 @@ class Site(gov_info.Site):
         return "2d Circuit"
 
     def get_court_name(self):
-        return 'ED New York'
+        return 'United States District Court, E.D. New York'

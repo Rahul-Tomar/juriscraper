@@ -157,7 +157,19 @@ class Site(OpinionSite):
             if list(case).__len__() == 0:
                 continue
             else:
-                names.append(case["Name"])
+                # print(case)
+                if isinstance(case, list):
+                    # print(f"⚠️ Skipping list item in self.cases: {case}")
+                    continue
+
+                if not isinstance(case, dict):
+                    # print(f"⚠️ Unexpected item type {type(case)} in self.cases: {case}")
+                    continue
+                name = case.get("Name")
+                if not name:
+                    continue
+                names.append(name)
+                # names.append(case["Name"])
         #         return [case["Name"] for case in self.cases]
         return names
 
@@ -167,7 +179,18 @@ class Site(OpinionSite):
             if list(case).__len__()==0:
                 continue
             else:
-                pdf_url = str(case["Name_Url"])
+                if isinstance(case, list):
+                    # print(f"⚠️ Skipping list item in self.cases: {case}")
+                    continue
+
+                if not isinstance(case, dict):
+                    # print(f"⚠️ Unexpected item type {type(case)} in self.cases: {case}")
+                    continue
+                pdf_url = case.get("Name_Url")
+                if not pdf_url:
+                    continue
+                pdf_url = str(pdf_url)
+                # pdf_url = str(case["Name_Url"])
                 if not pdf_url.__contains__(""):
                     pdf_url = "https://www.supremecourt.gov"+pdf_url
                 name_urls.append(pdf_url)
@@ -181,7 +204,18 @@ class Site(OpinionSite):
             # print(case)
             if list(case).__len__()==0:
                 continue
-            case_date = case["Date"]
+            # print(case)
+            if isinstance(case, list):
+                # print(f"⚠️ Skipping list item in self.cases: {case}")
+                continue
+
+            if not isinstance(case, dict):
+                # print(f"⚠️ Unexpected item type {type(case)} in self.cases: {case}")
+                continue
+
+            case_date = case.get("Date")
+            if not case_date:
+                continue
             converted_date = convert_date_string(case_date)
             converted_dates.append(converted_date)
         return converted_dates
@@ -192,7 +226,17 @@ class Site(OpinionSite):
             if list(case).__len__() == 0:
                 continue
             else:
-                dockets.append(case["Docket"])
+                if isinstance(case, list):
+                    # print(f"⚠️ Skipping list item in self.cases: {case}")
+                    continue
+
+                if not isinstance(case, dict):
+                    # print(f"⚠️ Unexpected item type {type(case)} in self.cases: {case}")
+                    continue
+                docket = case.get("Docket")
+                if not docket:
+                    continue
+                dockets.append(docket)
         # return [case["Docket"] for case in self.cases]
         return dockets
 
@@ -202,7 +246,17 @@ class Site(OpinionSite):
             if list(case).__len__() == 0:
                 continue
             else:
-                citations.append(case["citations"])
+                if isinstance(case, list):
+                    # print(f"⚠️ Skipping list item in self.cases: {case}")
+                    continue
+
+                if not isinstance(case, dict):
+                    # print(f"⚠️ Unexpected item type {type(case)} in self.cases: {case}")
+                    continue
+                citation = case.get("citations")
+                if not citation:
+                    continue
+                citations.append(citation)
         # return [case["citations"] for case in self.cases]
         return citations
 
@@ -212,7 +266,17 @@ class Site(OpinionSite):
             if list(case).__len__()==0:
                 continue
             else:
-                judges.append(case["judge"])
+                if isinstance(case, list):
+                    # print(f"⚠️ Skipping list item in self.cases: {case}")
+                    continue
+
+                if not isinstance(case, dict):
+                    # print(f"⚠️ Unexpected item type {type(case)} in self.cases: {case}")
+                    continue
+                judge = case.get("judge")
+                if not judge:
+                    continue
+                judges.append(judge)
         # return [case["judge"] for case in self.cases]
         return judges
 
