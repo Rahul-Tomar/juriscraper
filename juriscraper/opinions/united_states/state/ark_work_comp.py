@@ -19,7 +19,7 @@ class Site(OpinionSiteLinear):
         uls = self.html.xpath('//ul[@class="month-list"]')
         for ul in uls:
             lis = ul.xpath("./li")
-            for li in lis:
+            for li in reversed(lis):
                 url = str(li.xpath("./a/@href")[0]).strip()
                 title = str(li.xpath("./a/text()")[0]).strip()
                 if str(li.xpath("./a/text()")[1]).startswith("AWCC"):
