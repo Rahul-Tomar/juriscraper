@@ -19,7 +19,7 @@ class Site(OpinionSiteLinear):
             curr_date = datetime.strptime(date, "%m/%d/%Y").strftime("%d/%m/%Y")
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
             if res == 1:
-                return
+                continue
             title = row.xpath("normalize-space(substring-after(td[1]/a/text()[1], ' '))")
             pdfurl = row.xpath("td[1]/a/@href")[0]
             self.cases.append({

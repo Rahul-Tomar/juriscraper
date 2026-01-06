@@ -292,7 +292,8 @@ class AbstractSite(CaseMineCrawl):
                 )
                 case_date = fixed_date
                 self.case_dates[index] = fixed_date
-            if case_date.year > 2025:
+            current_year = datetime.now().year
+            if case_date.year > current_year:
                 raise InsanityException(
                     "%s: member of case_dates list is from way in the future, "
                     "with value %s" % (self.court_id, case_date.year)
