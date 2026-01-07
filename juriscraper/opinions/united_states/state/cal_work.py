@@ -23,7 +23,8 @@ class Site(OpinionSiteLinear):
         # self.status = 'Unpublished'
 
     def _process_html(self, start :int , end :int) -> None:
-        for table in self.html.xpath(".//table[@class='table table-striped w100pct']"):
+
+        for table in self.html.xpath(".//table[@class='table w100pct']"):
             case_cell = table.xpath(".//tr[1]/td[1]")[0]
             lines = case_cell.xpath('.//text()')
             cleaned = ' '.join(line.strip() for line in lines if line.strip())
@@ -60,7 +61,7 @@ class Site(OpinionSiteLinear):
             if year < start or year > end:
                 break
 
-
+            print(date)
             self.cases.append(
                 {
                     "date": date,
