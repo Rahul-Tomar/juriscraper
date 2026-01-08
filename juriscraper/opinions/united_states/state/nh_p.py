@@ -23,7 +23,7 @@ import requests
 import os
 from playwright.sync_api import sync_playwright
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 from urllib.parse import urlencode, urljoin
 from casemine.casemine_util import CasemineUtil
 from playwright.sync_api import sync_playwright
@@ -338,8 +338,7 @@ class Site(OpinionSiteLinear):
                         object_id = dup2.get("_id")
         return object_id
 
-    def _download_via_playwright(self, pdf_url: str, save_path: str,
-                                 warmup_url: str | None = None) -> bool:
+    def _download_via_playwright(self,pdf_url: str,save_path: str,warmup_url: Optional[str] = None) -> bool:
         try:
 
             with sync_playwright() as p:
