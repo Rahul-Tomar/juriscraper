@@ -3,6 +3,8 @@ History:
  - 2014-08-05: Adapted scraper to have year-based URLs.
  - 2023-11-18: Fixed and updated
 """
+from typing import Optional
+
 import requests
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
@@ -89,7 +91,7 @@ class Site(OpinionSiteLinear):
         #     num = "null"
         # return f"https://ojd.contentdm.oclc.org/digital/api/collection/{self.court_code}/id/{num}/download"
 
-    def extract_contentdm_id(self,url: str) -> str | None:
+    def extract_contentdm_id(self,url: str) -> Optional[str]:
         if not isinstance(url, str):
             return None
 
