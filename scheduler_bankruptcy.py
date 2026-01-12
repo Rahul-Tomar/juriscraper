@@ -5,11 +5,18 @@ import time
 import logging
 from datetime import datetime
 import traceback
+
+from pymongo import MongoClient
+
 from casemine.casemine_util import CasemineUtil
+from casemine.constants import MAIN_DATABASE_IP, DATABASE_PORT
 
 FOLDERS_TO_SCAN = ["juriscraper/opinions/united_states/federal_bankruptcy"]
 RESTRICTED_CLASSES = {'bap1', 'bap9', 'bap10', 'bank_nd_missi'}
-
+mongo = MongoClient(
+        'mongodb://' + MAIN_DATABASE_IP + ':' + str(DATABASE_PORT) + '/')
+db = mongo["GaugeDB"]
+job_monitor_collection = db["JobMonitor"]
 
 def setup_logging():
     today = datetime.now().strftime('%Y-%m-%d')
@@ -88,11 +95,29 @@ def run_site(site_class, class_name, logger):
         end_time = datetime.now()
         logger.info(f"End: {end_time.strftime('%d/%m/%Y %I:%M:%S %p')} at {site.crawled_till}")
         logger.info(f"Processed: {total_records}, Inserted: {unique_records}, Duplicates: {duplicate_records}")
-
+        store_job_run(class_name, total_records, start_time, end_time)
     except Exception as e:
         logger.error(f"Run error for {class_name}: {e}")
         logger.error(traceback.format_exc())
 
+def store_job_run(
+    class_name,
+    total_records,
+    start_time,
+    end_time
+):
+    document = {
+        "jobName": class_name,
+        "startTime": start_time,
+        "endTime": end_time,
+        "runDate": start_time.strftime("%Y-%m-%d"),
+        "count": total_records,
+        "country": "US",
+        "type": "CRAWL",
+        "status": "END"
+    }
+
+    job_monitor_collection.insert_one(document)
 
 def process_opinion_data(opinion, opinion_date, year, court_name, court_type, class_name, state_name):
     def check_none(field): return '' if field is None else field
