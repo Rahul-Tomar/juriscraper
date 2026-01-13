@@ -72,8 +72,8 @@ class Site(OpinionSiteLinear):
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.year = end_date.year
-        # self.url = f"https://oag.ca.gov/opinions/yearly-index?conclusion-year[value][year]={self.year}"
-        self.url = "https://oag.ca.gov/opinions/yearly-index?conclusion-year[value][year]=2012"
+        self.url = f"https://oag.ca.gov/opinions/yearly-index?conclusion-year[value][year]={self.year}"
+        # self.url = "https://oag.ca.gov/opinions/yearly-index?conclusion-year[value][year]=2012"
         self.back_scrape_iterable = list(range(1985, self.year + 1))
         self.parse()
         return 0

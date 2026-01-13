@@ -93,7 +93,8 @@ class Site(OpinionSiteLinear):
                                 "name": name,
                                 "disposition": disposition_text,
                                 "url": href,
-                                "docket": case_number
+                                "docket": case_number,
+                                "status":self.status
                             })
                             break
             print({

@@ -27,6 +27,7 @@ class Site(okla.Site):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.url = f"https://www.oscn.net/applications/oscn/Index.asp?ftdb=STOKCSCV&year={self.year}&level=1"
+        # self.url = f"https://www.oscn.net/applications/oscn/Index.asp?ftdb=STOKCSCV&year=2025&level=1"
         self._opt_attrs = [
             "adversary_numbers",
             "causes",

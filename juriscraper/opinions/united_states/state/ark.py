@@ -66,6 +66,7 @@ class Site(OpinionSiteLinear):
                 per_curiam = metadata[0].text_content().strip() == "Per Curiam"
 
             date_filed = item.xpath(".//*[@class='publicationDate']/text()")[0]
+            date = datetime.strptime(date_filed, "%m/%d/%Y").strftime("%b %d , %Y")
             curr_date = datetime.strptime(date_filed, "%m/%d/%Y").strftime("%d/%m/%Y")
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
             if res == 1:
@@ -80,7 +81,7 @@ class Site(OpinionSiteLinear):
 
             self.cases.append(
                 {
-                    "date": date_filed,
+                    "date": date,
                     "docket": docket,
                     "name": titlecase(name),
                     "citation": cite,

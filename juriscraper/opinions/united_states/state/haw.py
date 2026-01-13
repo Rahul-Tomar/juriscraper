@@ -55,8 +55,9 @@ class Site(OpinionSiteLinear):
                 self.parse()
                 next = list(self.html.xpath("//div[@id='reg-pagination']//a"))
                 self.downloader_executed=False
-                if str(next[-1].text).__eq__('Next »'):
+                if next and str(next[-1].text).__eq__('Next »'):
                     self.url = next[-1].get('href')
+                    print(self.url)
                 else:
                     break
         return 0

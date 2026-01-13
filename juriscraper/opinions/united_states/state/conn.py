@@ -187,7 +187,7 @@ class Site(OpinionSiteLinear):
             n = end_year-start_year
             curr_year = start_year
             i=0
-            while i<=n:
+            while i<=n :
                 self.url = self.make_url(curr_year)
                 self.html = self._download()
                 self._process_html()
@@ -290,7 +290,7 @@ class Site(OpinionSiteLinear):
             i = 0
             while True:
                 try:
-                    # os.makedirs(path, exist_ok=True)
+                    os.makedirs(path, exist_ok=True)
                     # us_proxy = CasemineUtil.get_us_proxy()
                     # response = requests.get(
                     #     url=pdf_url,

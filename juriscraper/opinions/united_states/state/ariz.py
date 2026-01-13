@@ -72,6 +72,10 @@ class Site(OpinionSite):
             if self.get_class_name().__eq__('ariz'):
                 self.url = "https://opinions.azcourts.gov/SearchOpinionsMemoDecs.aspx?year=2025&court=999"
                 response = requests.get(url=self.url, proxies=self.proxies)
+                # with open("/home/gaugedata/Downloads/response.html", "w",
+                #           encoding="utf-8") as f:
+                #     f.write(response.text)
+                # print(response.text)
                 tree = html.fromstring(response.text)
                 viewstate_value = tree.xpath('//input[@id="__VIEWSTATE"]/@value')[0]
                 viewstate_generator_value = tree.xpath('//input[@id="__VIEWSTATEGENERATOR"]/@value')[0]
@@ -104,6 +108,7 @@ class Site(OpinionSite):
                     "__dnnVariable": "`{`__scdoff`:`1`}"
                 }
                 response2 = requests.post(url=self.url, proxies=self.proxies, data=self.parameters)
+                # print(response2.text)
                 pagination_param={
                     "KB_JSTester_JSEnabled": "1",
                     "KB_JSTester_JQueryVsn": "3.7.1",
@@ -116,6 +121,8 @@ class Site(OpinionSite):
                 logger.info(f"{self.url}&page={page}")
                 pagination_response = requests.post(url=self.url, proxies=self.proxies, data=pagination_param)
                 # print(pagination_response.text)
+                # print(pagination_response.status_code)
+                # print(pagination_response.text[:2000])
                 self.html = html.fromstring(pagination_response.text)
                 # print(html.tostring(self.html, pretty_print=True).decode("utf-8"))
             elif self.get_class_name().__eq__('arizctapp_div_1'):
@@ -166,12 +173,16 @@ class Site(OpinionSite):
                 }
                 logger.info(f"{self.url}&page={page}")
                 pagination_response = requests.post(url=self.url, proxies=self.proxies, data=pagination_param)
+                # print(pagination_response.status_code)
+                # print(pagination_response.text[:2000])
                 self.html = html.fromstring(pagination_response.text)
             else:
                 pass
 
             # print(self.html.xpath("string()")[:1000])
             # print(html.tostring(self.html, pretty_print=True).decode("utf-8")[:20000])
+            # print(html.tostring(self.html, pretty_print=True).decode("utf-8")[
+            #           :10000000])
             rows = self.html.xpath("//table//tr")
             # print(len(rows))
             doc_path = '//div[contains(@class,"title-number")]//span[@class="field-content"]/text()'

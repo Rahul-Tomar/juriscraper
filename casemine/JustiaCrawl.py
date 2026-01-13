@@ -330,7 +330,7 @@ def run_justia():
     for i in range(len(courts)):
 
         court = courts[i]
-        # if court!="Northern District of Mississippi":
+        # if court!="Northern District of California":
         #     continue
         court_url = urls[i] + str(datetime.now().year) + "/"
         crawled_till = crawled[i]
@@ -342,7 +342,8 @@ def run_justia():
         print(f"✔ Total Added: {count}")
         print(f"latest_crawled_date for {court} id {latest_crawled_date}")
         if not latest_crawled_date:
-            raise Exception("Invalid latest_crawled_date ")
+            # raise Exception("Invalid latest_crawled_date ")
+            latest_crawled_date=crawled_till
         print("#################################### End ############################################")
         crawled[i] = latest_crawled_date
 

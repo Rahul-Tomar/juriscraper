@@ -35,6 +35,7 @@ class Site(OpinionSiteLinear):
     # document_purpose = 1331 -> Supreme Court Opinion
     base_filter = "{}@field_document_purpose|=|1331"
     year_to_filter = {
+        2026: "@field_document_subcategory|=|2721",
         2025: "@field_document_subcategory|=|2616",
         2024: "@field_document_subcategory|=|2316",
         2023: "@field_document_subcategory|=|2256",

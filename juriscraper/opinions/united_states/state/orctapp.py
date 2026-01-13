@@ -43,7 +43,7 @@ class Site(OpinionSiteLinear):
 
             page.goto(
                 url,
-                timeout=60000,
+                timeout=120000,
                 wait_until="domcontentloaded"
             )
 
@@ -58,8 +58,9 @@ class Site(OpinionSiteLinear):
 
             if href and href.startswith("/"):
                 href = "https://cdm17027.contentdm.oclc.org" + href
+                print(href)
 
-            # id = self.extract_contentdm_id(href)
+            id = id_value = re.search(r"/id/(\d+)", href).group(1)
             url = f"https://cdm17027.contentdm.oclc.org/digital/api/collection/p17027coll3/id/{id}/download"
             # print(url)
             return url
@@ -73,7 +74,24 @@ class Site(OpinionSiteLinear):
     def get_pdf_id(self,docket : str, name : str):
         u = f"https://cdm17027.contentdm.oclc.org/digital/api/search/collection/p17027coll3!p17027coll5!p17027coll6/searchterm/{docket}/field/all/mode/all/conn/all/order/date/ad/desc/maxRecords/50"
         print(u)
-        url_json = self.request["session"].get(u,headers=self.request["headers"]).json()
+        resp = self.request["session"].get(
+            u,
+            headers=self.request["headers"],
+            timeout=30
+        )
+
+        if resp.status_code != 200:
+            return None
+
+        ct = resp.headers.get("Content-Type", "")
+        if "json" not in ct.lower():
+            # blocked / throttled / HTML page
+            return None
+
+        try:
+            url_json = resp.json()
+        except ValueError:
+            return None
 
         if url_json["totalResults"]==0:
             return
@@ -120,10 +138,13 @@ class Site(OpinionSiteLinear):
                         text=text.replace("\t"," ")
                         docket = anchors[1].text_content().strip()
                         name = text.split(")", 1)[-1].strip()
-                        url = self.fetch_url_json(docket)
+                        # url = self.fetch_url_json(docket)
+                        html_url = f"https://cdm17027.contentdm.oclc.org/digital/search/collection/p17027coll3%21p17027coll5%21p17027coll6/searchterm/{docket}/field/all/mode/all/conn/all/order/date/ad/desc"
+                        print(html_url)
                         citation = text.split("(", 1)[0].strip()
                         citation = re.sub(r'\s+', ' ', citation)
                         pdf_url_id = self.get_pdf_id(docket, name)
+                        url = f"https://cdm17027.contentdm.oclc.org/digital/api/collection/p17027coll5/id/{pdf_url_id}/download"
                         pdf_url = f"https://cdm17027.contentdm.oclc.org/digital/collection/{self.court_code}/id/{pdf_url_id}/rec"
                         response_html = self.get_html_responsd(pdf_url_id)
 

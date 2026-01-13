@@ -22,6 +22,8 @@ class Site(oklacivapp.Site):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.url = f"https://www.oscn.net/applications/oscn/Index.asp?ftdb=STOKCSCR&year={self.year}&level=1"
+        # self.url = f"https://www.oscn.net/applications/oscn/Index.asp?ftdb=STOKCSCR&year=2025&level=1"
+
         self._CASE_META_PATTERN = re.compile(
             r'^(?P<docket>\d{4}\s+OK\s+CR\s+\d+),\s+'
             r'(?:(?P<citation>\d+\s+P\.3d\s+\d+),\s+)?'

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 from bs4 import BeautifulSoup
 
@@ -509,8 +509,11 @@ class Site(OpinionSiteLinear):
         return self.lower_court_info if self.lower_court_info else []
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        self.startdate = "01/12/2025"
-        self.end_date = "31/12/2025"
+        self.startdate = start_date.strftime("%d/%m/%Y")
+
+        edate = start_date + timedelta(days=7)
+        self.end_date = edate.strftime("%d/%m/%Y")
+
         self.parse()
         return len(getattr(self, "cases", []))
 

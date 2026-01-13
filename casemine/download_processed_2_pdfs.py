@@ -47,7 +47,7 @@ for doc in crawl_cursor:
         response = requests.get(url=pdf_url,
                                 proxies={
                     # 'http': 'socks5h://127.0.0.1:9050','https': 'socks5h://127.0.0.1:9050',
-                    "http": "http://192.126.184.28:8800", "https": "http://192.126.184.28:8800"
+                    "http": "http://23.236.154.202:8800", "https": "http://23.236.154.202:8800"
                 }
                                 )
 

@@ -17,6 +17,7 @@ class Site(OpinionSiteLinear):
 
     def _process_html(self):
         # print("hello")
+        print(f"Downloading cases from {self.url}")
         PROXY = "http://23.236.197.155:8800"
         with sync_playwright() as p:
             browser = p.firefox.launch(
@@ -85,7 +86,8 @@ class Site(OpinionSiteLinear):
                         "date": formatted_date,
                         "docket": docket,
                         "name": case_name,
-                        "url": url
+                        "url": url,
+                        "status":self.status
                     })
 
 
