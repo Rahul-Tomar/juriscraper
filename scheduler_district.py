@@ -12,7 +12,7 @@ from casemine.casemine_util import CasemineUtil
 from casemine.constants import MAIN_DATABASE_IP, DATABASE_PORT
 
 FOLDERS_TO_SCAN = ["juriscraper/opinions/united_states/federal_district"]
-RESTRICTED_CLASSES = {"d_sc", "dcd", "gov_info", "ed_cal", "ed_okla", "nd_ill", "sd_texas", "nd_texas"}
+RESTRICTED_CLASSES = {"d_sc","d_sd", "dcd", "gov_info", "ed_cal", "ed_okla", "nd_ill", "sd_texas", "nd_texas"}
 mongo = MongoClient(
         'mongodb://' + MAIN_DATABASE_IP + ':' + str(DATABASE_PORT) + '/')
 db = mongo["GaugeDB"]
