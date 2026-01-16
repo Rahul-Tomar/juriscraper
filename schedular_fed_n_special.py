@@ -106,18 +106,27 @@ def store_job_run(
     start_time,
     end_time
 ):
+    run_date = start_time.strftime("%Y-%m-%d")
     document = {
         "jobName": class_name,
         "startTime": start_time,
         "endTime": end_time,
-        "runDate": start_time.strftime("%Y-%m-%d"),
+        "runDate": run_date,
         "count": total_records,
         "country": "US",
         "type": "CRAWL",
         "status": "END"
     }
-
-    job_monitor_collection.insert_one(document)
+    job_monitor_collection.update_one(
+        {
+            "jobName": class_name,
+            "runDate": run_date
+        },
+        {
+            "$set": document
+        },
+        upsert=True
+    )
 
 
 def process_opinion_data(opinion, opinion_date, year, court_name, court_type, class_name, state_name):
