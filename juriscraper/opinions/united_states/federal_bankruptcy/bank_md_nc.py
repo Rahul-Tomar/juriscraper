@@ -14,28 +14,106 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.status = "Published"
 
-    def _process_html(self):
-        # Extract all opinion entries
-        entries = self.html.xpath('//div[contains(@class, "views-row")]')
-        for entry in entries:
-            # Extract each field with error handling
-            title = entry.xpath('.//div[contains(@class, "views-field-title")]/span[@class="field-content"]/a/text()')[0].replace("Judge:","").strip()
-            pdf_url = entry.xpath('.//div[contains(@class, "views-field-title")]/span[@class="field-content"]/a/@href')[0]
-            summary = entry.xpath('.//div[contains(@class, "views-field-body")]/div/p/text()')[0]
+    # def _process_html(self):
+    #     # Extract all opinion entries
+    #     entries = self.html.xpath('//div[contains(@class, "views-row")]')
+    #     for entry in entries:
+    #         # Extract each field with error handling
+    #         title = entry.xpath('.//div[contains(@class, "views-field-title")]/span[@class="field-content"]/a/text()')[0].replace("Judge:","").strip()
+    #         pdf_url = entry.xpath('.//div[contains(@class, "views-field-title")]/span[@class="field-content"]/a/@href')[0]
+    #         summary = entry.xpath('.//div[contains(@class, "views-field-body")]/div/p/text()')[0]
+    #
+    #         doc_list=re.findall(r'\d{2}-\d{5}|\d{2}-\d{4}', title)
+    #         new_title=str(title).replace("No.","").replace("Adv.","").replace("A.P.","").replace("(","").replace(")","").replace(doc_list.__getitem__(0),"").strip()
+    #         date = (entry.xpath('.//span[@class="date-display-single"]/text()') or [''])[0].strip()
+    #         curr_date = datetime.strptime(date, "%m/%d/%Y").strftime("%d/%m/%Y")
+    #         res = CasemineUtil.compare_date(self.crawled_till, curr_date)
+    #         if res == 1:
+    #             return
+    #         self.cases.append({
+    #             "name":new_title,
+    #             "url":pdf_url,
+    #             "docket":doc_list,
+    #             "date":date,
+    #             "summary":summary
+    #         })
 
-            doc_list=re.findall(r'\d{2}-\d{5}|\d{2}-\d{4}', title)
-            new_title=str(title).replace("No.","").replace("Adv.","").replace("A.P.","").replace("(","").replace(")","").replace(doc_list.__getitem__(0),"").strip()
-            date = (entry.xpath('.//span[@class="date-display-single"]/text()') or [''])[0].strip()
-            curr_date = datetime.strptime(date, "%m/%d/%Y").strftime("%d/%m/%Y")
+    def _process_html(self):
+        entries = self.html.xpath('//div[contains(@class, "views-row")]')
+
+        for entry in entries:
+
+            # ---- TITLE ----
+            title_nodes = entry.xpath(
+                './/div[contains(@class, "views-field-title")]'
+                '/span[@class="field-content"]/a/text()'
+            )
+            if not title_nodes:
+                continue  # skip bad row safely
+
+            title = title_nodes[0].replace("Judge:", "").strip()
+
+            # ---- PDF URL ----
+            pdf_nodes = entry.xpath(
+                './/div[contains(@class, "views-field-title")]'
+                '/span[@class="field-content"]/a/@href'
+            )
+            if not pdf_nodes:
+                continue
+
+            pdf_url = pdf_nodes[0]
+
+            # ---- SUMMARY (SAFE + FLEXIBLE) ----
+            summary_nodes = entry.xpath(
+                './/div[contains(@class, "views-field-body")]//text()'
+            )
+
+            summary = " ".join(
+                s.strip() for s in summary_nodes if s.strip()
+            )
+
+            # ---- DOCKET ----
+            doc_list = re.findall(r'\d{2}-\d{5}|\d{2}-\d{4}', title)
+            if not doc_list:
+                continue
+
+            new_title = (
+                str(title)
+                .replace("No.", "")
+                .replace("Adv.", "")
+                .replace("A.P.", "")
+                .replace("(", "")
+                .replace(")", "")
+                .replace(doc_list[0], "")
+                .strip()
+            )
+
+            # ---- DATE ----
+            date_nodes = entry.xpath(
+                './/span[@class="date-display-single"]/text()'
+            )
+
+            if not date_nodes:
+                continue
+
+            date = date_nodes[0].strip()
+
+            try:
+                curr_date = datetime.strptime(date, "%m/%d/%Y").strftime(
+                    "%d/%m/%Y")
+            except:
+                continue
+
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
             if res == 1:
                 return
+
             self.cases.append({
-                "name":new_title,
-                "url":pdf_url,
-                "docket":doc_list,
-                "date":date,
-                "summary":summary
+                "name": new_title,
+                "url": pdf_url,
+                "docket": doc_list,
+                "date": date,
+                "summary": summary
             })
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:

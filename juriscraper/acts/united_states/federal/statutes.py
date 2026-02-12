@@ -31,7 +31,7 @@ class Statutes:
         self.base_url = "https://www.govinfo.gov/wssearch/rb/uscode"
         self.param1 = "fetchChildrenOnly="
         self.proxies = {
-            'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050'}
+            'http': 'http://23.236.154.202:8800', 'https': 'http://23.236.154.202:8800'}
 
     def hit_url(self, url):
         attempts = 5
@@ -282,4 +282,4 @@ class Statutes:
         self.client.close()
 
 act = Statutes()
-act.get_statutes(2015)
+act.get_statutes(2010)

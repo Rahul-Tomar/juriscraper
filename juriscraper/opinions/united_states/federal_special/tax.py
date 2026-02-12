@@ -86,6 +86,10 @@ class Site(OpinionSiteLinear):
             # print(f'pdf_url - {url}')
             with open(file_name, 'wb') as file:
                 file.write(response.content)
+
+            if not self.is_valid_pdf(file_name):
+                os.remove(file_name)
+                continue  # skip this case entirely
             # print("pdf downloaded")
             self.cases.append(
                 {
@@ -170,33 +174,53 @@ class Site(OpinionSiteLinear):
         obj_id = str(objectId)
         download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
 
-        if pdf_url.__eq__("") or (pdf_url is None) or pdf_url.__eq__("null"):
-            if html_url.__eq__("") or (html_url is None) or html_url.__eq__("null"):
-                self.judgements_collection.update_one({"_id": objectId}, {
-                    "$set": {"processed": 2}})
-            else:
-                self.judgements_collection.update_one({"_id": objectId}, {
-                    "$set": {"processed": 0}})
+        if pdf_url == "" or pdf_url is None or pdf_url == "null":
+            self.judgements_collection.update_one(
+                {"_id": objectId},
+                {"$set": {"processed": 2}}
+            )
+            return download_pdf_path
         else:
+            # Source file
+            source_path = (
+                    f'/home/gaugedata/Downloads/temp_dir_for_tax/'
+                    f'{data["docket"][0]}.pdf'
+                )
             try:
-                # Source file
-                source_path = f'/home/gaugedata/Downloads/temp_dir_for_tax/{data.__getitem__("docket")[0]}.pdf'
+                if not self.is_valid_pdf(source_path):
+                    raise ValueError("Invalid or missing PDF")
 
-                # Destination path with new filename
-                # destination_path = '/synology/PDFs/US/juriscraper/Special/Tax/United States Tax Court/2025/680632cea0960b94ae336600.pdf'
-
-                # Create destination directory if it doesn't exist
                 os.makedirs(os.path.dirname(download_pdf_path), exist_ok=True)
-
-                # Move and rename the file
                 shutil.move(source_path, download_pdf_path)
-                self.judgements_collection.update_one({"_id": objectId}, {"$set": {"processed": 0}})
-            except Exception as ex:
-                print(f"Error while downloading the PDF: {ex}")
-                self.judgements_collection.update_many({"_id": objectId}, {
-                    "$set": {"processed": 2}})
+
+                if not self.is_valid_pdf(download_pdf_path):
+                    raise ValueError("PDF corrupted after move")
+
+                self.judgements_collection.update_one(
+                    {"_id": objectId},
+                    {"$set": {"processed": 0}}
+                )
+
+            except Exception:
+                if os.path.exists(source_path):
+                    os.remove(source_path)
+
+                self.judgements_collection.update_one(
+                    {"_id": objectId},
+                    {"$set": {"processed": 2}}
+                )
         return download_pdf_path
 
+    def is_valid_pdf(self, path: str) -> bool:
+        try:
+            if not os.path.exists(path):
+                return False
+            if os.path.getsize(path) < 1024:
+                return False
+            with open(path, "rb") as f:
+                return f.read(4) == b"%PDF"
+        except Exception:
+            return False
 
     def get_court_type(self):
         return "Special"
