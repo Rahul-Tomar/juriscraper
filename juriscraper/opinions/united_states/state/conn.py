@@ -10,6 +10,7 @@ from juriscraper.lib.string_utils import clean_string
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 import os
 import re
+import time
 import requests
 
 class Site(OpinionSiteLinear):
@@ -208,11 +209,19 @@ class Site(OpinionSiteLinear):
         from lxml import html
 
         # ---- PROXY ----
-        proxy = "http://23.236.154.202:8800"
-        proxies = {
-            "http": proxy,
-            "https": proxy,
-        }
+        # proxy = "http://23.236.154.202:8800"
+        US_PROXIES = [
+            ("23.236.154.202", 8800),
+            ("23.236.154.249", 8800),
+            ("23.236.197.155", 8800),
+            ("23.236.197.227", 8800),
+            ("23.236.197.153", 8800),
+            ("156.241.221.148", 8800),
+            ("156.241.216.136", 8800),
+            ("156.241.216.8", 8800),
+            ("156.241.216.194", 8800),
+            ("156.241.221.92", 8800),
+        ]
 
         # ---- HEADERS ----
         headers = {
@@ -237,26 +246,40 @@ class Site(OpinionSiteLinear):
 
         scraper = cloudscraper.create_scraper()
 
-        logger.info(f"Downloading: {self.url}")
+        for ip, port in US_PROXIES:
+            proxy_url = f"http://{ip}:{port}"
+            proxies = {
+                "http": proxy_url,
+                "https": proxy_url
+            }
 
-        try:
-            resp = scraper.get(
-                self.url,
-                headers=headers,
-                cookies=cookies,
-                proxies=proxies,
-                timeout=60,
-            )
-        except Exception as e:
-            logger.error(f"Cloudscraper failed: {e}")
-            raise
+            logger.info(f"Trying proxy: {proxy_url}")
+            timeout = 60
+            try:
+                resp = scraper.get(
+                    self.url,
+                    headers=headers,
+                    proxies=proxies,
+                    timeout=timeout
+                )
 
-        if resp.status_code != 200:
-            logger.error(f"Bad status {resp.status_code} for URL: {self.url}")
-            raise Exception(f"Failed to download {self.url}")
+                if resp.status_code == 200:
+                    logger.info(f"✅ Success with proxy {proxy_url}")
+                    return html.fromstring(resp.text)
+
+                logger.warning(
+                    f"❌ Status {resp.status_code} with proxy {proxy_url}"
+                )
+
+            except Exception as e:
+                logger.error(f"❌ Proxy failed {proxy_url}: {e}")
+
+            logger.info("⏳ Sleeping 60 seconds before next proxy...")
+            time.sleep(60)
+
+        raise Exception("All proxies exhausted, no 200 response received")
 
         # Return parsed HTML tree exactly as Juriscraper expects
-        return html.fromstring(resp.text)
 
     def download_pdf(self, data, objectId):
         pdf_url = data.__getitem__('pdf_url')

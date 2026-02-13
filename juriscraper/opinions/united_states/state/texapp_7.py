@@ -4,15 +4,16 @@
 # Author: Andrei Chelaru
 # Reviewer: mlr
 # Date: 2014-07-10
-from juriscraper.opinions.united_states.state import tex
+from juriscraper.opinions.united_states.state import tex, tex_new
 
 
-class Site(tex.Site):
+class Site(tex_new.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.court_name = "capp_7"
-        self.checkbox = 8
+        self.checkbox = "ctl00$ContentPlaceHolder1$chkListCourts$8"
+        self.category = "ctl00$ContentPlaceHolder1$chkListDocTypes$0"
 
     def make_case_name_short(self, s):
 

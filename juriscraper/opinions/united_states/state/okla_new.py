@@ -7,6 +7,8 @@ from lxml import html as lxml_html
 from lxml import etree
 import re
 from bs4 import BeautifulSoup
+
+from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 from playwright.sync_api import sync_playwright
 class Site(OpinionSiteLinear):
@@ -140,16 +142,23 @@ class Site(OpinionSiteLinear):
 
             # --- TITLE ---
             title = container.find("font", size="4").get_text(strip=True)
+            citation = container.find("font", size="2").get_text(strip=True)
             date_match = re.search(r"Decided:\s*([0-9/]+)",
                                    container.get_text())
             decision_date = datetime.strptime(date_match.group(1),
                                               "%m/%d/%Y").date()
             date = decision_date.strftime("%b %d , %Y")
+            parsed_date = decision_date.strftime("%d/%m/%Y")
+
+            # res = CasemineUtil.compare_date(self.crawled_till, parsed_date)
+            # if res == 1:
+            #     # continue
+            #     return
             citation = container.find("font", size="1").get_text(strip=True)
             if "," in citation:
-                citation = citation.split(",", 1)[1].strip()
+                parallel_citation = citation.split(",", 1)[1].strip()
             else:
-                citation = ''
+                parallel_citation = ''
             pdf_url=''
             # --- CASE NUMBER + URL ---
             case_link = container.find("a")
@@ -228,9 +237,9 @@ class Site(OpinionSiteLinear):
 
                         pdf_url = "https://www.oscn.net/dockets/" + pdf_a["href"]
                         # print("Got PDF URL:", pdf_url)
-
-
             case_number = case_link.get_text(strip=True)
+            if not case_number:
+                case_number=citation
             status = self.detect_publication_status(content)
             div = self.extract_opinion_html(content)
 
@@ -257,8 +266,9 @@ class Site(OpinionSiteLinear):
                 "response_html":div,
                 "citation":citation,
                 "revision_status":revision_status,
+                "parallel_citation":[parallel_citation]
             })
-            return
+            # return
 
             # print(resp.status_code)
 
@@ -465,6 +475,7 @@ class Site(OpinionSiteLinear):
         except Exception as ex:
             if not str(ex).__eq__("Judgment already Exists!"):
                 raise Exception(ex)
+
         if obj_id is not None:
             content_pdf = self.download_pdf(data, obj_id)
         # flag = saveContent(judId, contentPdf)

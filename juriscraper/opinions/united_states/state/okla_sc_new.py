@@ -1,37 +1,57 @@
-# Scraper for Oklahoma Court of Civil Appeals
-# CourtID: oklacivapp
-# Court Short Name: OK
-# Author: Andrei Chelaru
-# Reviewer: mlr
-# Date: 2014-07-05
 from datetime import datetime
-import re
-from typing import Tuple, Optional, List
-
-from bs4 import BeautifulSoup
-
-from casemine.casemine_util import CasemineUtil
-from juriscraper.opinions.united_states.state import okla
-import re
+from xmlrpc.client import boolean
+import pdfkit
 import os
 import requests
-from lxml import html
-import pdfkit
+from lxml import html as lxml_html
+from lxml import etree
 from casemine.proxy_manager import ProxyManager
 from sample_caller import logger
-PDFKIT_CONFIG = pdfkit.configuration(
-    wkhtmltopdf="/usr/bin/wkhtmltopdf"
-)
+import re
+from bs4 import BeautifulSoup
+from juriscraper.opinions.united_states.state import okla, oklacrimapp
+from lxml import html
 
-import time
+from casemine.casemine_util import CasemineUtil
+from juriscraper.OpinionSiteLinear import OpinionSiteLinear
+from playwright.sync_api import sync_playwright
 
-class Site(okla.Site):
+class Site(oklacrimapp.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
-        year = datetime.now().year
-        # self.url = f"https://www.oscn.net/applications/oscn/Index.asp?ftdb=STOKCSCV&year=2025&level=1"
-        self.url = f"https://www.oscn.net/applications/oscn/Index.asp?ftdb=STOKCSCV&year={year}&level=1"
+        self.year = datetime.today().year
+        self.url = f"https://www.oscn.net/applications/oscn/Index.asp?ftdb=STOKCSSC&year=2026&level=1"
+        self.headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
+        }
+        self.US_PROXIES = [
+            # ("23.236.154.202", 8800),
+            # ("23.236.154.249", 8800),
+            # ("23.236.197.155", 8800),
+            # ("23.236.197.227", 8800),
+            # ("23.236.197.153", 8800),
+            # ("156.241.221.148", 8800),
+            ("156.241.216.136", 8800),
+            ("156.241.216.8", 8800),
+            ("156.241.216.194", 8800),
+            ("156.241.221.92", 8800),
+            ("156.241.216.136", 8800),
+            ("156.241.216.8", 8800),
+            ("156.241.216.194", 8800),
+            ("156.241.221.92", 8800),
+            ("23.236.154.202", 8800),
+            ("23.236.154.249", 8800),
+            ("23.236.197.155", 8800),
+            ("23.236.197.227", 8800),
+            ("23.236.197.153", 8800),
+            ("156.241.221.148", 8800),
+        ]
+
         self._opt_attrs = [
             "adversary_numbers",
             "causes",
@@ -59,121 +79,22 @@ class Site(okla.Site):
             "response_htmls",
             "opinion_types",
             "teasers",
+            "revision_status"
         ]
+        self._CASE_META_PATTERN = re.compile(
+            r'^(?P<docket>\d{4}\s+OK\s+CR\s+\d+),\s+'
+            r'(?:(?P<citation>\d+\s+P\.3d\s+\d+),\s+)?'
+            r'(?P<date>\d{2}/\d{2}/\d{4}),\s+'
+            r'(?P<name>.+)$'
+        )
         self._opt_attrs = self._opt_attrs + ["cite_info_html"]
-        self.valid_keys.update({
-            "cite_info_html"
-        })
         self._all_attrs = self._req_attrs + self._opt_attrs
 
         for attr in self._all_attrs:
             self.__setattr__(attr, None)
 
-        self._CASE_META_PATTERN = re.compile(
-            r'^(?P<docket>\d{4}\s+OK\s+CIV\s+APP\s+\d+),\s+'
-            r'(?:(?P<citation>\d+\s+P\.3d\s+\d+),\s+)?'
-            r'(?P<date>\d{2}/\d{2}/\d{4}),\s+'
-            r'(?P<name>.+)$'
-        )
-        self.US_PROXIES = [
-            # ("23.236.154.202", 8800),
-            # ("23.236.154.249", 8800),
-            # ("23.236.197.155", 8800),
-            # ("23.236.197.227", 8800),
-            # ("23.236.197.153", 8800),
-            # ("156.241.221.148", 8800),
-            ("156.241.216.136", 8800),
-            ("156.241.216.8", 8800),
-            ("156.241.216.194", 8800),
-            ("156.241.221.92", 8800),
-            ("156.241.216.136", 8800),
-            ("156.241.216.8", 8800),
-            ("156.241.216.194", 8800),
-            ("156.241.221.92", 8800),
-            ("23.236.154.202", 8800),
-            ("23.236.154.249", 8800),
-            ("23.236.197.155", 8800),
-            ("23.236.197.227", 8800),
-            ("23.236.197.153", 8800),
-            ("156.241.221.148", 8800),
-        ]
-        self.status = "Published"
-        self.headers = {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br, zstd",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Connection": "keep-alive",
-            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
-        }
 
-    def _download(self, request_dict={}):
-
-        resp = None
-        for ip, port in self.US_PROXIES:
-            proxy = self.make_proxy(ip, port)
-
-            try:
-                resp = requests.get(
-                    self.url,
-                    headers=self.headers,
-                    proxies=proxy,
-                    timeout=30
-                )
-
-                print(f"Trying {ip}:{port} → {resp.status_code}")
-
-                if resp.status_code == 200:
-                    # print(resp.content)
-                    self.html = html.fromstring(resp.content)
-                    break
-
-            except requests.RequestException as e:
-                print(f"Proxy failed {ip}:{port} → {e}")
-                continue
-
-        if not resp or resp.status_code != 200:
-            raise RuntimeError("All proxies exhausted, no 200 response")
-
-    def _extract_opinion_sections(self, tree) -> str:
-        # Start after the tmp-style block
-        nodes = tree.xpath(
-            "//*[@id='tmp-style']/following-sibling::*"
-        )
-
-        if not nodes:
-            raise ValueError("Opinion body not found (tmp-style missing)")
-
-        html_blocks = []
-
-        for node in nodes:
-            text = node.text_content().strip()
-
-            if not text:
-                continue
-
-            # Stop before citationizer
-            if "Citationizer" in text:
-                break
-
-            upper = text.upper()
-
-            # Section headers
-            if upper in {"SUMMARY", "BACKGROUND", "DISCUSSION", "FOOTNOTES"}:
-                html_blocks.append(f"<div class='section'>{upper}</div>")
-                continue
-
-            # Paragraph numbering
-            if text.startswith("¶"):
-                para, _, rest = text.partition(" ")
-                html_blocks.append(
-                    f"<p><span class='para-num'>{para}</span> {rest}</p>"
-                )
-            else:
-                html_blocks.append(f"<p>{text}</p>")
-
-        return "\n".join(html_blocks)
-
-    def _process_html(self, start_date: datetime, end_date: datetime):
+    def _process_html(self, start_date : datetime , end_date : datetime):
         base_url = "https://www.oscn.net/dockets/"
         cite_html = ""
         div = ""
@@ -202,7 +123,7 @@ class Site(okla.Site):
 
             docket, citation, date, name = None, None, None, None
             case_text = text[0].replace("\xa0", " ").strip()
-            citation, parallel_citation, date, name = self.extract_case_metadata(case_text)
+            citation, parallel_citation, date, name = self.parse_oklahoma_case(case_text)
             content = ''
             # if len(parts)==2:
             #     docket , name = parts
@@ -218,13 +139,13 @@ class Site(okla.Site):
             #         docket, citation, name = parts
             #         date = "01/01/2024"
             # if name=='OKLAHOMA ex rel. STATE BOARD OF EXAMINERS OF CERTIFIED COURTROOM INTERPRETERS v. ALVARADO':
-            if 2<3:
-            # parsed_date = datetime.strptime(date.strip(), "%m/%d/%Y")
-            #
-            # if parsed_date.month == 1:
-                # if datetime.strptime(date.strip(),
-                #                      "%m/%d/%Y") >= start_date and datetime.strptime(
-                #     date.strip(), "%m/%d/%Y") <= end_date:
+
+            parsed_date = datetime.strptime(date.strip(), "%m/%d/%Y")
+
+            # if parsed_date.month == 9:
+            if datetime.strptime(date.strip(),
+                                 "%m/%d/%Y") >= start_date and datetime.strptime(
+                date.strip(), "%m/%d/%Y") <= end_date:
                 # docket=docket.replace("\xa0"," ")
                 print(f"date of the case is {date}")
 
@@ -236,7 +157,7 @@ class Site(okla.Site):
                         url = "https://www.oscn.net/applications/oscn/" + url
                         print(url)
 
-                    response_html = ''
+                    response_html=''
                     for ip, port in self.US_PROXIES:
                         proxy = self.make_proxy(ip, port)
 
@@ -292,8 +213,7 @@ class Site(okla.Site):
                     div_content = tree.xpath(
                         "//div[@class='container-fluid sized']")
                     if div_content:
-                        tmp = div_content[0].xpath(
-                            ".//div[@id='opinions-navigation']")
+                        tmp = div_content[0].xpath(".//div[@id='opinions-navigation']")
 
                         if tmp:
                             tmp[0].getparent().remove(
@@ -408,12 +328,23 @@ class Site(okla.Site):
                 if date:
                     date = datetime.strptime(date, "%m/%d/%Y").strftime(
                         "%d %b , %Y")
+                status = self.detect_publication_status(div)
+                revision_status = 0  # by default for published
+                if status == "Unpublished":
+                    revision_status = 0
+                elif status == "Unknown":
+                    revision_status = 1
+
+                # div = self.extract_opinion_html(content)
+                # if date:
+                #     date = datetime.strptime(date, "%m/%d/%Y").strftime("%d %b , %Y")
                 self.cases.append(
                     {
                         "date": date,
                         "name": name,
                         "docket": [docket],
-                        "status": self.status,
+                        "status":status,
+                        "revision_status":revision_status,
                         "citation": cit_arr,
                         "url": pdf_url,
                         "cite_info_html": cite_html,
@@ -423,58 +354,32 @@ class Site(okla.Site):
                     }
                 )
                 self.proxy_usage_count += 1
+                # break
 
-
-    def extract_case_metadata(self, text: str) -> Tuple[
-        Optional[str], Optional[str], Optional[str], Optional[str]]:
+    def extract_opinion_html(self, html: str) -> str:
         """
-        Extracts docket, citation (optional), date, and case name from a citation line.
-        Returns (docket, citation, date, name). Missing fields are None.
-        """
-
-        if not text:
-            return None, None, None, None
-
-        try:
-            match = self._CASE_META_PATTERN.match(text.strip())
-            if not match:
-                return None, None, None, None
-
-            docket = match.group("docket")
-            citation = match.group("citation")  # None if absent
-            date = match.group("date")
-            name = match.group("name").strip()
-
-            return docket, citation, date, name
-        except Exception:
-            # absolutely no crashes in crawl pipeline
-            return None, None, None, None
-
-    def extract_case_metadata(self, text: str) -> Tuple[
-        Optional[str], Optional[str], Optional[str], Optional[str]]:
-        """
-        Extracts docket, citation (optional), date, and case name from a citation line.
-        Returns (docket, citation, date, name). Missing fields are None.
+        Extracts ALL OSCN document blocks and concatenates them.
+        This handles multi-section opinions correctly.
         """
 
-        if not text:
-            return None, None, None, None
+        blocks = re.findall(
+            r"<!--\s*BEGIN DOCUMENT\s*-->(.*?)<!--\s*END DOCUMENT\s*-->",
+            html,
+            flags=re.I | re.S
+        )
 
-        try:
-            match = self._CASE_META_PATTERN.match(text.strip())
-            if not match:
-                return None, None, None, None
+        if not blocks:
+            raise ValueError("BEGIN/END DOCUMENT markers not found")
 
-            docket = match.group("docket")
-            citation = match.group("citation")  # None if absent
-            date = match.group("date")
-            name = match.group("name").strip()
+        combined_html = "\n".join(blocks)
 
-            return docket, citation, date, name
+        soup = BeautifulSoup(combined_html, "lxml")
 
-        except Exception:
-            # absolutely no crashes in crawl pipeline
-            return None, None, None, None
+        # Remove scripts and styles
+        for tag in soup(["script", "style"]):
+            tag.decompose()
+
+        return soup.prettify()
 
     def download_pdf(self, data, objectId):
         import os
@@ -484,7 +389,7 @@ class Site(okla.Site):
 
         pdf_url = data.get("pdf_url")
         response_html = data.get("response_html")
-        html_url = data.get("html_url")
+
         year = int(data.get("year"))
         court_name = data.get("court_name")
         court_type = data.get("court_type")
@@ -522,7 +427,7 @@ class Site(okla.Site):
         # ==========================================================
         # CASE 1: NO PDF URL → GENERATE PDF FROM CLEANED HTML
         # ==========================================================
-        if not pdf_url or str(pdf_url).strip().lower() in ["", "null","https://www.oscn.net/"]:
+        if not pdf_url or str(pdf_url).strip().lower() in ["", "null"]:
 
             if not response_html:
                 self.judgements_collection.update_one(
@@ -571,7 +476,7 @@ class Site(okla.Site):
 
                 self.judgements_collection.update_one(
                     {"_id": objectId},
-                    {"$set": {"processed": 0,"pdf_url": html_url}}
+                    {"$set": {"processed": 0}}
                 )
 
                 return download_pdf_path
@@ -635,70 +540,17 @@ class Site(okla.Site):
 
         return download_pdf_path
 
-    def make_proxy(self, ip, port):
-        proxy_url = f"http://{ip}:{port}"
-        return {
-            "http": proxy_url,
-            "https": proxy_url,
-        }
-
-    def build_pdf_content(self, raw_html: str) -> str:
-        tree = html.fromstring(raw_html)
-
-        title = tree.xpath("//title/text()")
-        title = title[0].strip() if title else "Attorney General Opinion"
-
-        sections_html = self._extract_opinion_sections(tree)
-
-        return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{title}</title>
-        <style>
-            body {{
-                font-family: "Times New Roman", serif;
-                font-size: 12pt;
-                line-height: 1.6;
-                margin: 1in;
-            }}
-            .title {{
-                text-align: center;
-                font-weight: bold;
-                font-size: 16pt;
-                margin-bottom: 20px;
-            }}
-            .section {{
-                text-align: center;
-                font-weight: bold;
-                margin-top: 30px;
-                margin-bottom: 10px;
-            }}
-            p {{
-                text-align: justify;
-                margin: 0 0 12px 0;
-            }}
-            .para-num {{
-                font-weight: bold;
-            }}
-            hr {{
-                margin: 20px 0;
-            }}
-        </style>
-    </head>
-    <body>
-
-    <div class="title">{title}</div>
-
-    {sections_html}
-
-    </body>
-    </html>
-    """
+    def _get_revision_status(self):
+        return [case.get("revision_status", "") for case in self.cases]
 
     def get_court_name(self):
-        return "Okla. Civ. App."
+        return "Supreme Court of Oklahoma"
+
+    def get_state_name(self):
+        return "Oklahoma"
 
     def get_class_name(self):
-        return "oklacivapp"
+        return "okla_sc_new"
+
+    def get_court_type(self):
+        return "state"

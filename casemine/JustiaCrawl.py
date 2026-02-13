@@ -52,6 +52,7 @@ config_collection = db["JustiaConfig"]
 judis_code_and_name = get_juris_code()
 codeList = code_list()
 level = level()
+counter = 0
 # ============================================================
 # 🔥 PLAYWRIGHT PAGE FETCHER
 # ============================================================
@@ -85,6 +86,13 @@ def get_page_html(url):
     return None
 
 
+def get_next_proxy():
+    global proxy_index
+    proxy = PROXIES[proxy_index]
+    proxy_index = (proxy_index + 1) % len(PROXIES)
+    print(f"[PROXY ROTATION] Using Proxy: {proxy['server']}")
+    return proxy["server"]
+
 # ============================================================
 # 🔥 PDF DOWNLOADER
 # ============================================================
@@ -95,22 +103,53 @@ def download_pdf(pdf_url, case_id, year, court, court_type):
     filepath = f"{base_dir}{case_id}.pdf"
     duplicate_filter = {"_id": case_id}
 
-    try:
-        r = requests.get(pdf_url, timeout=30, stream=True)
-        with open(filepath, "wb") as f:
-            for chunk in r.iter_content(1024):
-                f.write(chunk)
+    for attempt in range(10):   # retry 10 times with new proxy
+        proxy_server = get_next_proxy()
 
-        # ✅ PDF downloaded successfully, set pipe = 0
-        collection.update_one(duplicate_filter, {"$set": {"pipe": 0}})
-        return True
+        proxies = {
+            "http": proxy_server,
+            "https": proxy_server
+        }
 
-    except Exception as e:
-        traceback.print_exc()
+        print(f"[PDF] Attempt {attempt+1} using proxy: {proxy_server}")
 
-        # ❌ PDF download failed, set pipe = 2
-        collection.update_one(duplicate_filter, {"$set": {"pipe": 2}})
-        return False
+        try:
+            r = requests.get(
+                pdf_url,
+                timeout=30,
+                stream=True,
+                proxies=proxies
+            )
+
+            if r.status_code == 200:
+                with open(filepath, "wb") as f:
+                    for chunk in r.iter_content(1024):
+                        f.write(chunk)
+
+                collection.update_one(
+                    duplicate_filter,
+                    {"$set": {"pipe": 0}}
+                )
+
+                print("✅ PDF Downloaded Successfully")
+                return True
+
+            else:
+                print(f"❌ Bad Status Code: {r.status_code}")
+
+        except Exception as e:
+            print(f"❌ Proxy failed: {proxy_server}")
+            print("Error:", str(e))
+
+    # If all proxies fail
+    collection.update_one(
+        duplicate_filter,
+        {"$set": {"pipe": 2}}
+    )
+
+    print("❌ All proxies failed for PDF download")
+    return False
+
 
 # ============================================================
 # 🔥 MAIN JUSTIA SCRAPER — FULL LOGIC FROM JAVA
@@ -169,7 +208,7 @@ def crawl_court(court, court_url, crawled_till, court_type):
                 if formated_date.date() > latest_dt.date():
                     latest_crawled_date = formated_date_str
 
-            if formated_date.date() <= crawled_till_dt.date():
+            if formated_date.date() < crawled_till_dt.date():
                 print("Reached or passed crawledTill, stopping.")
                 # if not latest_crawled_date:
                 #     latest_crawled_date = formated_date_str
@@ -299,15 +338,23 @@ def crawl_court(court, court_url, crawled_till, court_type):
 
             # Insert/update MongoDB
             existing = collection.find_one({"pdfUrl": pdf_url})
+            flag=False
             if not existing:
                 _id = collection.insert_one(data).inserted_id
                 print(f"✔ Inserted case: id : { _id} , title : { title} ")
-
+                flag=True
+                global counter
+                counter += 1
                 # Download PDF
                 download_pdf(pdf_url, _id, year, court, court_type)
                 count += 1
             else:
-                print("---Duplicate---")
+                print(f"---Duplicate--- { title}")
+                flag=True
+            if not flag:
+                raise Exception(
+                    "Data cannot be skipped — neither inserted nor marked duplicate")
+
 
         # NEXT PAGE
         next_btn = soup.select_one("span.next.pagination.page > a")
@@ -326,13 +373,13 @@ def run_justia():
     urls = config["courtsUrls"]
     crawled = config["CrawledTill"]
     types = config["courtType"]
-
     for i in range(len(courts)):
 
         court = courts[i]
-        # if court!="Northern District of California":
+        # if court!="Missouri Court of Appeals":
         #     continue
         court_url = urls[i] + str(datetime.now().year) + "/"
+        # court_url = "https://law.justia.com/cases/missouri/court-of-appeals/2025/"
         crawled_till = crawled[i]
         court_type = types[i]
 
@@ -340,10 +387,11 @@ def run_justia():
 
         count , latest_crawled_date= crawl_court(court, court_url, crawled_till, court_type)
         print(f"✔ Total Added: {count}")
-        print(f"latest_crawled_date for {court} id {latest_crawled_date}")
+
         if not latest_crawled_date:
             # raise Exception("Invalid latest_crawled_date ")
             latest_crawled_date=crawled_till
+            print(f"latest_crawled_date for {court} id {latest_crawled_date}")
         print("#################################### End ############################################")
         crawled[i] = latest_crawled_date
 
@@ -352,7 +400,8 @@ def run_justia():
         {"ClassName": "JustiaCrawl"},
         {"$set": {"CrawledTill": crawled}}
     )
-
+    global counter
+    print("Total records inserted are " , counter)
 
 # Run scraper
 run_justia()

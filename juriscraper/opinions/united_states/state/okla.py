@@ -306,8 +306,8 @@ class Site(OpinionSiteLinear):
             if font:
                 text = font.get_text(strip=True).upper()
 
-                if "NOTICE: THIS OPINION HAS NOT BEEN RELEASED FOR PUBLICATION" in text:
-                    return "Semi-published"
+                if "NOTICE: THIS OPINION HAS NOT BEEN RELEASED FOR PUBLICATION. UNTIL RELEASED, IT IS SUBJECT TO REVISION OR WITHDRAWAL." in text:
+                    return "Unknown"
                 elif "FOR PUBLICATION IN OBJ ONLY. NOT FOR OFFICIAL PUBLICATION" in text:
                     return "Unpublished"
 
@@ -463,6 +463,98 @@ class Site(OpinionSiteLinear):
             content_pdf = self.download_pdf(data, obj_id)
         # flag = saveContent(judId, contentPdf)
         return self.flag
+
+    def sanitize_opinion_html_for_pdf(self, div_html: str) -> str:
+        """
+        Returns clean, court-style HTML BODY content only.
+        No <html>, <head>, or <body> nesting.
+        Safe for direct PDF rendering.
+        """
+        if not div_html:
+            return ""
+
+        # Remove OSCN junk markers
+        div_html = re.sub(r'BEGIN DOCUMENT', '', div_html, flags=re.I)
+
+        soup = BeautifulSoup(div_html, "lxml")
+
+        # Remove html/head/body if present
+        for tag in soup.find_all(["html", "head", "body"]):
+            tag.unwrap()
+
+        # Remove scripts and non-printable elements
+        for tag in soup(
+            ["script", "style", "iframe", "object", "embed", "noscript"]):
+            tag.decompose()
+
+        # Remove hyperlinks but keep text
+        for a in soup.find_all("a"):
+            a.unwrap()
+
+        # Remove raw URLs from visible text
+        for node in soup.find_all(string=True):
+            cleaned = re.sub(r'https?://\S+', '', node)
+            cleaned = re.sub(r'www\.\S+', '', cleaned)
+            node.replace_with(cleaned)
+
+        # Strip unwanted attributes
+        for tag in soup.find_all(True):
+            for attr in ("href", "onclick", "id", "class", "style", "name"):
+                tag.attrs.pop(attr, None)
+
+        # Replace <br> with line breaks
+        for br in soup.find_all("br"):
+            br.replace_with("\n")
+
+        # --- Court-style CSS (INLINE, BODY-SAFE) ---
+        css = """
+    <style>
+    body {
+        font-family: "Times New Roman", Georgia, serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        margin: 1.25in 1in;
+        color: #000;
+    }
+
+    p {
+        margin: 0 0 12px 0;
+        text-align: justify;
+    }
+
+    blockquote {
+        margin: 12px 36px;
+        font-style: italic;
+    }
+
+    hr {
+        border: none;
+        border-top: 1px solid #000;
+        margin: 18px 0;
+    }
+
+    center {
+        text-align: center;
+        margin: 12px 0;
+    }
+
+    strong { font-weight: bold; }
+    em { font-style: italic; }
+
+    sup {
+        font-size: 9pt;
+        vertical-align: super;
+    }
+
+    .page-break {
+        page-break-before: always;
+    }
+    </style>
+    """
+
+        # Return BODY CONTENT ONLY (NO <html><body>)
+        return css + str(soup)
+
 
     def download_pdf(self, data, objectId):
         pdf_url = data.get('pdf_url')

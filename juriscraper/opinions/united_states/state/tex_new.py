@@ -9,10 +9,12 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.status = "Published"
         self.url = "https://search.txcourts.gov/CaseSearch.aspx?coa=cossup"
+        self.category = "ctl00$ContentPlaceHolder1$chkAllFiles"
         self.proxies = {
             "http": "http://23.236.197.153:8800",
             "https": "http://23.236.197.153:8800"
         }
+        self.checkbox = "ctl00$ContentPlaceHolder1$chkListCourts$0"
         self.lower_court_info = []
         self._opt_attrs = [
             "adversary_numbers",
@@ -114,7 +116,7 @@ class Site(OpinionSiteLinear):
             "__SCROLLPOSITIONY": scroll_y_val,        # <-- MISSING
             "__EVENTVALIDATION": event_validation,
             "ctl00$ContentPlaceHolder1$SearchType": "rbSearchByDocument",
-            "ctl00$ContentPlaceHolder1$chkListCourts$0": "on",
+            self.checkbox: "on",
             "ctl00$ContentPlaceHolder1$ddlCourts": "2f9a4941-9b55-463d-a622-b6b304b19142",
             "ctl00$ContentPlaceHolder1$txtSearchText": "",
             "ctl00$ContentPlaceHolder1$Stemming": "on",
@@ -150,7 +152,7 @@ class Site(OpinionSiteLinear):
 
     "ctl00_ContentPlaceHolder1_dtDocumentTo_ClientState":
         '{"minDateStr":"1900-01-01-00-00-00","maxDateStr":"2099-12-31-00-00-00"}',
-            "ctl00$ContentPlaceHolder1$chkAllFiles": "on",
+            self.category:	"on",
             "ctl00$ContentPlaceHolder1$btnSearchText": "Search",
             "ctl00_ContentPlaceHolder1_grdDocuments_ctl00_ctl04_caseNumberCOA_ClientState": "",
             "ctl00_ContentPlaceHolder1_grdDocuments_ctl00_ctl06_caseNumberCOA_ClientState": "",
@@ -240,7 +242,7 @@ class Site(OpinionSiteLinear):
                 "__SCROLLPOSITIONX": scroll_x_val,
                 "__SCROLLPOSITIONY": scroll_y_val,
                 "ctl00$ContentPlaceHolder1$SearchType": "rbSearchByDocument",
-                "ctl00$ContentPlaceHolder1$chkListCourts$0": "on",
+                self.checkbox: "on",
                 "ctl00$ContentPlaceHolder1$ddlCourts": "2f9a4941-9b55-463d-a622-b6b304b19142",
                 "ctl00$ContentPlaceHolder1$txtSearchText": "",
                 "ctl00$ContentPlaceHolder1$Stemming": "on",
@@ -278,7 +280,8 @@ class Site(OpinionSiteLinear):
     "ctl00_ContentPlaceHolder1_dtDocumentTo_ClientState":
         '{"minDateStr":"1900-01-01-00-00-00","maxDateStr":"2099-12-31-00-00-00"}',
 
-                "ctl00$ContentPlaceHolder1$chkAllFiles": "on",
+                # "ctl00$ContentPlaceHolder1$chkAllFiles": "on",
+                "ctl00$ContentPlaceHolder1$chkListDocTypes$0":"on",
 
                 "ctl00_ContentPlaceHolder1_grdDocuments_ctl00_ctl04_caseNumberCOA_ClientState": "",
                 "ctl00_ContentPlaceHolder1_grdDocuments_ctl00_ctl06_caseNumberCOA_ClientState": "",
@@ -373,27 +376,35 @@ class Site(OpinionSiteLinear):
                 continue
 
             # Extract date
-            case_date = tds[1].get_text(strip=True)
 
+            case_date = tds[1].get_text(strip=True) #for backup only it will be modified later
+            response_html = ''
+            html_url = ''
             # Extract case number and link
             case_td = tds[4]
             case_a = case_td.find("a")
+            docket = None
             if case_a:
                 case_number = str(case_a.get_text(strip=True))
+                if case_a:
+                    docket = case_a.get_text(strip=True)
+                    print(docket)
                 case_href = case_a.get("href")
                 case_url = f"https://search.txcourts.gov/Case.aspx?cn={case_number}&coa=cossup"
                 # print(case_url)
+                html_url=case_url
                 case_response = requests.get(url=case_url,headers=self.headers,proxies=self.proxies)
                 # print(case_response.status_code)
+                response_html = case_response.text
                 case_soup = BeautifulSoup(case_response.text,"html.parser")
                 # print(case_response.text)
                 for row in case_soup.find_all("tr"):
                     tds = row.find_all("td")
 
                     if len(tds) >= 5:
-                        # Check if 2nd td contains 'opinion issued' (case-insensitive)
-                        if "opinion issued" in tds[1].get_text(
-                            strip=True).lower():
+                        text = tds[1].get_text(strip=True).lower()
+
+                        if ("opinion issued" in text or "opinion issd" in text):
                             # 3rd td → disposition
                             disposition = tds[2].get_text(strip=True)
 
@@ -406,6 +417,8 @@ class Site(OpinionSiteLinear):
                                 if not pdf_url.startswith("https"):
                                     pdf_url = "https://search.txcourts.gov/"+pdf_url
                                 print(pdf_url)
+                                case_date = tds[0].get_text(strip=True)
+
                             else:
                                 pdf_url = ""
                                 print(f"pdf url is null for {case_number} ,  case_date : {case_date}")
@@ -448,15 +461,21 @@ class Site(OpinionSiteLinear):
                                                      id="ctl00_ContentPlaceHolder1_divCOAInfo")
 
                             coa_info_dict = {}
-                            for row in coa_info_div.find_all("div",
-                                                             class_="row-fluid"):
-                                label_tag = row.find("label", class_="form1")
-                                value_tag = row.find("div", class_="span4")
-                                if label_tag and value_tag:
-                                    label = label_tag.get_text(strip=True)
-                                    value = value_tag.get_text(
-                                        strip=True).replace("\xa0", " ")
-                                    coa_info_dict[label] = value
+                            if coa_info_div:
+                                for row in coa_info_div.find_all("div",
+                                                                 class_="row-fluid"):
+                                    label_tag = row.find("label",
+                                                         class_="form1")
+                                    value_tag = row.find("div", class_="span4")
+
+                                    if label_tag and value_tag:
+                                        label = label_tag.get_text(strip=True)
+                                        value = value_tag.get_text(
+                                            strip=True).replace("\xa0", " ")
+                                        coa_info_dict[label] = value
+                            else:
+                                # Expected for many cases
+                                coa_info_dict = {}
 
                             trial_dict = {}
 
@@ -477,13 +496,24 @@ class Site(OpinionSiteLinear):
                                 "Court of Appeals Information": coa_info_dict,
                                 "Trial Court Information": trial_dict
                             }
-                            if not case_number:
-                                continue
+                            if not docket or not str(docket).strip():
+                                if case_number:
+                                    docket=case_number
+                                else :
+                                    raise ValueError(
+                                    f"Invalid or blank docket for title: {title}")
                             self.lower_court_info.append(combined_dict)
+                            # if case_number.startswith('-'):
+                            #     continue
+                            dt = datetime.strptime(case_date, "%m/%d/%Y")
+                            date = f"{dt.day} {dt.strftime('%b, %Y')}"
+                            print(date)
                             self.cases.append({
                                 "name":title,
-                                'date':case_date,
-                                'docket':case_number,
+                                'date':date,
+                                'docket':[docket],
+                                'html_url':html_url,
+                                'response_html':response_html,
                                 'url':pdf_url,
                                 'disposition':disposition,
                                 'status':self.status,
@@ -498,6 +528,58 @@ class Site(OpinionSiteLinear):
 
         return cases
 
+    def _fetch_duplicate(self, data):
+        pdf_url = str(data.get("pdf_url"))
+        title = data.get("title")
+        date = data.get("date")
+        docket = data.get("docket")
+        html_url = data.get("html_url")
+        court_name = data.get("court_name")
+        object_id = None
+        if pdf_url.__eq__("") or (pdf_url is None) or pdf_url.__eq__("null"):
+            if html_url.__eq__("") or (html_url is None) or html_url.__eq__("null"):
+                return object_id
+            else:
+                query1 = {"html_url":html_url}
+                dup1 = self.judgements_collection.find_one(query1)
+                if not dup1 is None:
+                    query2 = {"court_name": court_name, "title": title, "docket": docket}
+                    dup2 = self.judgements_collection.find_one(query2)
+                    if not dup2 is None:
+                        # Check if the document already exists and has been processed
+                        processed = dup2.get("processed")
+                        if processed == 10:
+                            raise Exception("Judgment already Exists!")  # Replace with your custom DuplicateRecordException
+                        else:
+                            object_id = dup2.get("_id")
+
+        else:
+            query3 = {"pdf_url":pdf_url}
+            dup = self.judgements_collection.find_one(query3)
+            if dup is None:
+                query4 = {"court_name":court_name, "title":title,"docket":docket}
+                dup2=self.judgements_collection.find_one(query4)
+                if not dup2 is None:
+                    # Check if the document already exists and has been processed
+                    processed = dup2.get("processed")
+                    if processed == 10:
+                        raise Exception("Judgment already Exists!")  # Replace with your custom DuplicateRecordException
+                    else:
+                        object_id = dup2.get("_id")
+            else:
+                query4 = {
+                    "court_name": court_name, "title": title, "docket": docket}
+                dup2 = self.judgements_collection.find_one(query4)
+                if not dup2 is None:
+                    # Check if the document already exists and has been processed
+                    processed = dup2.get("processed")
+                    if processed == 10:
+                        raise Exception("Judgment already Exists!")
+                         # Replace with your custom DuplicateRecordException
+                    else:
+                        object_id = dup2.get("_id")
+        return object_id
+
     def _process_html(self):
         pass
 
@@ -511,9 +593,12 @@ class Site(OpinionSiteLinear):
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.startdate = start_date.strftime("%d/%m/%Y")
 
-        edate = start_date + timedelta(days=7)
+        edate = start_date + timedelta(days=15)
         self.end_date = edate.strftime("%d/%m/%Y")
-
+        # self.startdate = "15/01/2026"
+        # self.end_date = "28/01/2026"
+        print(start_date)
+        print(self.end_date)
         self.parse()
         return len(getattr(self, "cases", []))
 

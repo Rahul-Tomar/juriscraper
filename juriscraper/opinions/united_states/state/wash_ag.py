@@ -57,12 +57,14 @@ class Site(OpinionSiteLinear):
                 html_tree = self._make_html_tree(response_html)
                 response_html = html_tree.xpath("//section[@id='block-atg-content']")[0]
                 content = html.tostring(response_html,pretty_print=True).decode("utf-8")
+
             self.cases.append({
                 "date":date,
                 "docket":[docket],
                 "name":title,
                 "url":'',
                 "html_url":relative_url,
+                "url":relative_url,    # pdf url is not available but we need the value of pdfurl for merging indexing so we can take the html url as pdf_url
                 "response_html":content
             })
 

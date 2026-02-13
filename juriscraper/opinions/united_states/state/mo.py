@@ -58,6 +58,7 @@ class Site(OpinionSiteLinear):
         if start == end:
             # print("start and end year are same")
             self.url = self.build_url(start)
+            print(self.url)
             i=0
             while True:
                 try:

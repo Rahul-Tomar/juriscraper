@@ -71,6 +71,8 @@ class Site(OpinionSiteLinear):
                 pdf_url =  middle.xpath("a")[1].get("href").replace(" ", "%20")
                 if not pdf_url.startswith("https"):
                     pdf_url="https://www.courts.wa.gov"+pdf_url
+                title = name.text_content().replace("* ", "")
+                print(title)
                 self.cases.append(
                     {
                         "date": date.text_content(),

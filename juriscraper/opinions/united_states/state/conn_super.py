@@ -61,9 +61,12 @@ class Site(OpinionSiteLinear):
                 date_part = week.split(':')[0]
                 m, d, y = date_part.split('-')
                 formatted_date = f"{d}/{m}/{y}"
-                # res = CasemineUtil.compare_date(self.crawled_till, formatted_date)
-                # if res == 1:
-                #     continue
+                dt = datetime.strptime(date_part, "%m-%d-%Y")
+
+                date = dt.strftime("%d %b , %Y")
+                res = CasemineUtil.compare_date(self.crawled_till, formatted_date)
+                if res == 1:
+                    continue
                 # Each case entry
                 cases = section.query_selector_all(
                     "div.collapsable_cont article.MODList > div.fullWidth"
@@ -83,7 +86,7 @@ class Site(OpinionSiteLinear):
                         url = "https://jud.ct.gov/Superiorcourt/MOD/" + url.lstrip("/")
 
                     self.cases.append({
-                        "date": formatted_date,
+                        "date": date,
                         "docket": docket,
                         "name": case_name,
                         "url": url,
@@ -92,10 +95,11 @@ class Site(OpinionSiteLinear):
 
 
                     print({
-                        "date": formatted_date,
+                        "date": date,
                         "docket": docket,
                         "name": case_name,
-                        "doc_url": url
+                        "doc_url": url,
+                        "status":self.status
                     })
 
             browser.close()

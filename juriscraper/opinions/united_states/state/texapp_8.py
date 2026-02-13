@@ -6,15 +6,17 @@
 # Date: 2014-07-10
 
 
-from juriscraper.opinions.united_states.state import tex
+from juriscraper.opinions.united_states.state import tex, tex_new
 
 
-class Site(tex.Site):
+class Site(tex_new.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.court_name = "capp_8"
-        self.checkbox = 9
+        self.checkbox = "ctl00$ContentPlaceHolder1$chkListCourts$9"
+        self.category = "ctl00$ContentPlaceHolder1$chkListDocTypes$0"
+
     def get_court_name(self):
         return "Texas Court of Appeals"
 
