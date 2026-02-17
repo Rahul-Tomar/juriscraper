@@ -6,7 +6,7 @@
 # Date: 2014-07-10
 
 
-from juriscraper.opinions.united_states.state import tex, tex_new
+from juriscraper.opinions.united_states.state import tex_new
 
 
 class Site(tex_new.Site):

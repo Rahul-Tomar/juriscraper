@@ -3,7 +3,7 @@ import os
 import time
 import requests
 import random
-
+import re
 mongo = MongoClient("mongodb://192.168.1.11:27017")
 db = mongo["justia"]
 collection = db["JustiaData"]
@@ -101,15 +101,27 @@ count=collection.count_documents(query)
 print(count)
 crawl_cursor = collection.find(query)
 for doc in crawl_cursor:
+    objectId = doc.get('_id')
+    obj_id = str(objectId)
+    print(obj_id)
     pdfUrl = doc.get('pdfUrl')
+    if not pdfUrl:
+        continue
+
+        # Extract correct href if corrupted
+    if 'href="' in pdfUrl:
+        match = re.search(r'href="([^"]+)', pdfUrl)
+        if match:
+            pdfUrl = match.group(1)
+    print(pdfUrl)
+
     year = doc.get('year')
     courtName = doc.get('courtName')
     courtType = doc.get('courtType')
-    objectId = doc.get('_id')
+
     update_query = {}
     path = "/synology/PDFs/US/Justia/" + courtType + "/" + courtName + "/" +str(year)
-    obj_id = str(objectId)
-    print(obj_id)
+
     download_pdf_path = os.path.join(path, f"{obj_id}.pdf")
     os.makedirs(path, exist_ok=True)
     try:

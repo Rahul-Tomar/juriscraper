@@ -234,15 +234,23 @@ def crawl_court(court, court_url, crawled_till, court_type):
             try:
                 pdf_tag = case_soup.select_one(".pdf-icon")
                 if pdf_tag:
-                    # Get outer HTML
-                    pdf_html = str(pdf_tag)
+                    href = pdf_tag.get("href")
 
-                    # Extract href manually like Java logic
-                    start_idx = pdf_html.find('href="/') + 7
-                    end_idx = pdf_html.find('" target="')
-                    pdf_url = "https:/" + pdf_html[start_idx:end_idx]
+                    if href:
+                        if href.startswith("//"):
+                            pdf_url = "https:" + href
+                        elif href.startswith("/"):
+                            pdf_url = "https://cases.justia.com" + href
+                        elif href.startswith("https"):
+                            pdf_url = href
+                        else:
+                            pdf_url = None
+                    else:
+                        pdf_url = None
+                        raise Exception("Pdf is Null")
                 else:
                     pdf_url = None
+                    raise Exception("Pdf is Null")
             except:
                 continue
 

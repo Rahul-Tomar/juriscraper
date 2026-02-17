@@ -70,30 +70,31 @@ class Site(OpinionSite):
             print(f"[INFO] Processing page {page}")
 
             payload = {
-                "__VIEWSTATE": viewstate,
+                 "__VIEWSTATE": viewstate,
                 "__VIEWSTATEGENERATOR": viewstategen,
                 "__EVENTTARGET": "",
                 "__EVENTARGUMENT": "",
+
                 "ctlOpinions1selAgencies": self.court,
-                "ctlOpinions1selPeriods": "2025",
-                "ctlOpinions1txtSearchText": "",
-                "ctlOpinions1selResults": "25",
-                "ctlOpinions1hdnAgency": self.court,
-                "ctlOpinions1hdnCaseType": "",
-                "ctlOpinions1hdnDivision": "",
-                "ctlOpinions1hdnSortBy": "",
-                "ctlOpinions1hdnSortOrder": "0",
-                "ctlOpinions1hdnSortByNew": "",
-                "ctlOpinions1hdnPageNo": str(page),
+                "ctlOpinions1selperiods": "30",
+                "ctlOpinions1txtsearchtext": "",
+                "ctlOpinions1selresults": "25",
+
+                "ctlOpinions1hdnagency": self.court,
+                "ctlOpinions1hdncasetype": "",
+                "ctlOpinions1hdndivision": "",
+                "ctlOpinions1hdnsortby": "",
+                "ctlOpinions1hdnsortorder": "",
+                "ctlOpinions1hdnsortbynew": "",
+                "ctlOpinions1hdnpageno": "",
             }
 
             response = session.post(URL, data=payload, proxies=self.proxies)
-            print(response.text)
+            # print(response.text)
             tree = html.fromstring(response.text)
-
             rows = tree.xpath("//table[contains(@class,'table')]/tbody/tr")
             if not rows:
-                print(f"[INFO] No rows found on page {page}. Stopping.")
+                print(f"[INFO] No rows found on page {page}. Stopping.")   # If stille we get blank rows means it is issue
                 break
 
             print(f"[INFO] Found {len(rows)} rows on page {page}")

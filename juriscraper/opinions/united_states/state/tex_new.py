@@ -557,7 +557,7 @@ class Site(OpinionSiteLinear):
             query3 = {"pdf_url":pdf_url}
             dup = self.judgements_collection.find_one(query3)
             if dup is None:
-                query4 = {"court_name":court_name, "title":title,"docket":docket}
+                query4 = {"court_name":court_name, "title":title,"docket":docket,"pdf_url":pdf_url}
                 dup2=self.judgements_collection.find_one(query4)
                 if not dup2 is None:
                     # Check if the document already exists and has been processed
