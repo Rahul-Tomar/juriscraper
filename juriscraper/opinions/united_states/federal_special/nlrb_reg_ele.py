@@ -38,7 +38,7 @@ class Site(OpinionSiteLinear):
             if self.end_year is not None:
                 if self.end_year < end_date.year:
                     flag=False
-            self.url=f"https://www.nlrb.gov/sort-case-decisions-nbd/date_issued+desc/regional-election-decisions/date-issued/all/all/100?_wrapper_format=drupal_ajax&page={page}&_wrapper_format=drupal_ajax"
+            self.url=f"https://www.nlrb.gov/sort-case-decisions-nbd/date_issued+desc/regional-election-decisions/date-issued/all/all/50?_wrapper_format=drupal_ajax&page={page}&_wrapper_format=drupal_ajax"
             self.method = "POST"
             self.parameters={
                 "js":"true",

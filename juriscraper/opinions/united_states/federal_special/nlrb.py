@@ -37,7 +37,7 @@ class Site(OpinionSiteLinear):
             if self.end_year is not None:
                 if self.end_year < end_date.year:
                     flag=False
-            self.url=f"https://www.nlrb.gov/sort-case-decisions-bd/date_issued+desc/board-decisions/date-issued/-1/all/100?_wrapper_format=drupal_ajax&search_term=&volume=-1&slip_opinion_number=&page_number=&items_per_page=100&op=Apply&form_build_id=form-fuigRriFNZ72jRNDMiEgN8o2suPF3ZGJY5wThVCOPKY&form_id=board_decisions_form&url=&page={page}&_wrapper_format=drupal_ajax"
+            self.url=f"https://www.nlrb.gov/sort-case-decisions-bd/date_issued+desc/board-decisions/date-issued/-1/all/100?_wrapper_format=drupal_ajax&search_term=&volume=-1&slip_opinion_number=&page_number=&items_per_page=50&op=Apply&form_build_id=form-fuigRriFNZ72jRNDMiEgN8o2suPF3ZGJY5wThVCOPKY&form_id=board_decisions_form&url=&page={page}&_wrapper_format=drupal_ajax"
             self.method = "POST"
             self.parameters={
                 "js":"true",

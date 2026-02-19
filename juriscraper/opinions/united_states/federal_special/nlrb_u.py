@@ -38,10 +38,10 @@ class Site(OpinionSiteLinear):
             if self.end_year is not None:
                 if self.end_year < end_date.year:
                     flag=False
-            self.url=f"https://www.nlrb.gov/sort-case-decisions-nbd/date_issued+desc/unpublished-board-decisions/date-issued/all/all/100?_wrapper_format=drupal_ajax&page={page}&_wrapper_format=drupal_ajax"
+            self.url=f"https://www.nlrb.gov/sort-case-decisions-nbd/date_issued+desc/unpublished-board-decisions/date-issued/all/all/50?_wrapper_format=drupal_ajax&_wrapper_format=drupal_ajax&page={page}"
             self.method = "POST"
             self.parameters={
-                "js": "true", "_drupal_ajax": "1", "ajax_page_statetheme]": "nlrb", "ajax_page_state[theme_token]": "", "ajax_page_state[libraries]": "eJyNUYGqwyAM_CFXP0miZp1rasRYuu7rn7WW0T0ePJDj7mJiTCy4yRSuJ2n74eYpyv4RKvgqyhK8N92wc0cgQkHOGDH4ThPTdg9Ep8w8B8GuMtw7W9Em5R4sGLXPSwIaDtVNQ8Hqgw5ORLUXaxNQa3U-owiMWGOcUUfOM1B4o6otU4jTWbZLNTKPhKbAqMcK33qAJ7yu5qwiZat3-LBb_bebmjauduPRBQkcRf-2Bg_JQATaSnDyzxzhXC7OkedBHpYhe32Vw7w1I3FaUr_Ka9w3Ivpkt5JhU61z3XBAkBDHi9WWKJsUnI85L7LuNdoYu2j4A7Ir46Y"
+                "js": "true", "_drupal_ajax": "1", "ajax_page_statetheme]": "nlrb", "ajax_page_state[theme_token]": "", "ajax_page_state[libraries]": "eJyNUQFuwyAM_BCFJyGHuCmJwQiTtenrRwjRlk2TJiHr7mzM2YAIFuvjjK5wNk5E35kLZhswrnYgdouCa9Esehbby8AV_4GWfFzUAG6xhetJ5hu2s_yZKvgqaiB4b6bFjh3VN8nLmSOGscPEtN090UkzBy_YWYZ7R08cknIPFoxmzGsC0gfrYnU8mAPqOrVqL1YTUHt1HFAEJqw5zmgi5wDk36iq5X3cs22namKeCG2ByUw1_OQaZnhdxaAi5cHs4Qvd6tx15zu0rroZ0XnxHMX8lvQIyUIE2op38s87wrlclOPeCPIYGPJorlSHrQmJ05p6KT_j_iNiTnQrGTbVnJsWNYL4OF2k9omyScFw7HmV596jrbGTFj8BcWkCZw"
             }
             self.parse()
             page=page+1
