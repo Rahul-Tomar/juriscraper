@@ -7,7 +7,8 @@ from juriscraper.lib.string_utils import convert_date_string
 class Site(wva.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.url = "https://www.courtswv.gov/appellate-courts/intermediate-court-of-appeals/opinions/prior-terms"
+        # self.url = "https://www.courtswv.gov/appellate-courts/intermediate-court-of-appeals/opinions/prior-terms"
+        self.url="https://www.courtswv.gov/appellate-courts/intermediate-court-of-appeals/opinions"
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         print(f"start : {start_date} and end : {end_date}")
@@ -45,9 +46,9 @@ class Site(wva.Site):
         }
 
         while True:
-            self.url = (
-                f"https://www.courtswv.gov/appellate-courts/intermediate-court-of-appeals/opinions/prior-terms?page={self.page}&field_sca_opinion_year_value={self.year}&field_ica_opinion_year_value={self.year}"
-            )
+            # self.url = (
+            #     f"https://www.courtswv.gov/appellate-courts/intermediate-court-of-appeals/opinions/prior-terms?page={self.page}&field_sca_opinion_year_value={self.year}&field_ica_opinion_year_value={self.year}"
+            # )
             # if not self.downloader_executed:
             self.html = self._download()
 

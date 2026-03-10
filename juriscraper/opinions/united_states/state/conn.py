@@ -52,7 +52,6 @@ class Site(OpinionSiteLinear):
         return m.group(0)
 
     def extract_dockets_and_name(self, row) -> Tuple[str, str]:
-
         text = " ".join(row.xpath("ancestor::li[1]//text()"))
         clean_text = re.sub(r"[\n\r\t\s]+", " ", text)
         m = re.match(
@@ -76,7 +75,7 @@ class Site(OpinionSiteLinear):
             pub = row.xpath('preceding::*[contains(., "Published")][1]/text()')
             if pub:
                 date_filed_is_approximate = False
-                print(pub)
+                # print(pub)
                 try :
                     date_filed = self.find_published_date(pub[0])
                 except Exception:
@@ -88,6 +87,8 @@ class Site(OpinionSiteLinear):
 
                     print("Normalized pub text:", pub_text)
                     date_filed = self.find_published_date(pub_text)
+                    # if pub_text.startswith("Published") or pub_text.startswith("To Be Published"):
+                    #     continue
 
             else:
                 date_filed = f"{self.current_year}-07-01"
@@ -254,7 +255,7 @@ class Site(OpinionSiteLinear):
             }
 
             logger.info(f"Trying proxy: {proxy_url}")
-            timeout = 60
+            timeout = 30
             try:
                 resp = scraper.get(
                     self.url,
@@ -274,7 +275,7 @@ class Site(OpinionSiteLinear):
             except Exception as e:
                 logger.error(f"❌ Proxy failed {proxy_url}: {e}")
 
-            logger.info("⏳ Sleeping 60 seconds before next proxy...")
+            logger.info("⏳ Sleeping 30 seconds before next proxy...")
             time.sleep(60)
 
         raise Exception("All proxies exhausted, no 200 response received")

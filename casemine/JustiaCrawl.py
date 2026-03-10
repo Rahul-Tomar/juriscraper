@@ -12,32 +12,42 @@ from jurisdiction_codes import get_juris_code
 from jurisdiction_codes import code_list
 from jurisdiction_codes import level
 PROXIES = [
-    # {"server": "http://23.236.197.155:8800"},  # Us proxy
-    # {"server": "http://23.236.154.202:8800"},   # Us Proxy
-    {"server": "http://156.241.229.113:8800"},
-    {"server": "http://156.241.229.153:8800"},
-    {"server": "http://156.241.225.93:8800"},
-    {"server": "http://23.236.197.227:8800"}, #Us proxy
-    {"server": "http://156.241.224.167:8800"},
-    {"server": "http://46.175.153.152:8800"},
-    {"server": "http://23.236.197.153:8800"},  #Us proxy
-    {"server": "http://46.175.153.155:8800"},
-    {"server": "http://156.241.225.161:8800"},
-    {"server": "http://23.236.154.249:8800"}, #us
-    {"server": "http://156.241.224.171:8800"},
-    {"server": "http://23.236.197.153:8800"}, # us
+    # {"server": "http://23.236.154.202:8800"},
+    {"server": "http://23.236.154.249:8800"},
+    {"server": "http://23.236.197.155:8800"},
+    {"server": "http://156.230.239.253:8800"},
+    {"server": "http://156.241.224.100:8800"},
+    {"server": "http://156.230.239.89:8800"},
     {"server": "http://156.241.225.170:8800"},
-    {"server": "http://46.175.152.240:8800"},
+    {"server": "http://23.236.197.227:8800"},
+    {"server": "http://23.236.197.153:8800"},
+    {"server": "http://156.241.221.148:8800"},
+    {"server": "http://156.241.216.136:8800"},
+    {"server": "http://156.241.224.230:8800"},
+    {"server": "http://156.241.225.93:8800"},
+    {"server": "http://156.230.239.165:8800"},
+    {"server": "http://156.230.239.25:8800"},
+    {"server": "http://156.230.239.82:8800"},
     {"server": "http://156.241.224.217:8800"},
-    {"server": "http://46.175.154.18:8800"},
-    {"server": "http://46.175.152.107:8800"},
-    {"server": "http://46.175.153.171:8800"},
-    {"server": "http://156.241.225.81:8800"},
+    {"server": "http://156.241.229.153:8800"},
+    {"server": "http://156.230.239.219:8800"},
+    {"server": "http://156.241.225.161:8800"},
+    {"server": "http://156.230.237.72:8800"},
+    {"server": "http://156.241.216.8:8800"},
+    {"server": "http://156.241.216.194:8800"},
+    {"server": "http://156.241.221.92:8800"},
+    {"server": "http://156.230.237.72:8800"},
+    {"server": "http://156.230.237.123:8800"},
+    {"server": "http://156.230.237.42:8800"},
+    {"server": "http://156.241.229.113:8800"},
+    {"server": "http://156.241.229.151:8800"},
+    {"server": "http://156.241.224.171:8800"},
     {"server": "http://156.241.229.198:8800"},
-    {"server": "http://46.175.154.91:8800"},
-    {"server": "http://46.175.154.132:8800"},
-    {"server": "http://46.175.152.193:8800"},
-    {"server": "http://46.175.154.148:8800"},
+    {"server": "http://156.241.224.167:8800"},
+    {"server": "http://156.241.225.81:8800"},
+    {"server": "http://156.230.237.12:8800"},
+    {"server": "http://156.230.237.195:8800"},
+    {"server": "http://156.230.237.135:8800"}
 ]
 
 proxy_index = 0
@@ -358,6 +368,8 @@ def crawl_court(court, court_url, crawled_till, court_type):
                 count += 1
             else:
                 print(f"---Duplicate--- { title}")
+                id = str(existing["_id"])
+                # download_pdf(pdf_url, id, year, court, court_type)
                 flag=True
             if not flag:
                 raise Exception(

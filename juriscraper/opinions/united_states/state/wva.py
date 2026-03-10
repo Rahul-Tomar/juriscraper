@@ -86,10 +86,10 @@ class Site(OpinionSite):
         }
 
         while True:
-            self.url = (
-                f"https://www.courtswv.gov/appellate-courts/supreme-court-of-appeals/"
-                f"opinions/prior-terms?page={self.page}&field_sca_opinion_year_value={self.year}"
-            )
+            # self.url = (
+            #     f"https://www.courtswv.gov/appellate-courts/supreme-court-of-appeals/"
+            #     f"opinions/prior-terms?page={self.page}&field_sca_opinion_year_value={self.year}"
+            # )
             # if not self.downloader_executed:
             self.html = self._download()
 

@@ -94,9 +94,12 @@ class Site(OpinionSiteLinear):
 
             name = harmonize(row.xpath("td[1]/a")[0].text_content())
             opinion_date = row.xpath("td[3]")[0].text_content()
+            if re.match(r"^\d{1,2}/\d{1,2}/\d{2}$", opinion_date):
+                dt = datetime.strptime(opinion_date, "%m/%d/%y")
+                opinion_date = dt.strftime("%m/%d/%Y")
             curr_date = datetime.strptime(opinion_date, "%m/%d/%Y").strftime("%d/%m/%Y")
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
-            if res == 1:
+            if res == 1:   # Commented out because i found some data which was decided recently but their date was old
                 continue
             slip_cite = row.xpath("td[4]")[0].text_content()
             status = "Unpublished" if "(U)" in slip_cite else "Published"

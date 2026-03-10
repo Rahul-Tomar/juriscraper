@@ -1498,9 +1498,9 @@ def get_juris_code():
 "Trademark Trial and Appeal Board": "T.T.A.B.",
 "Attorney General of Texas — Opinion": "Ops. Tex. Atty. Gen.",
 "Southern District of West Virginia": "S.D.W. Va.",
-        "Superior Court of Connecticut":"Conn. Super. Ct.",                 # new court added by Ashish (26/12/2025)
-        "Attorney General of California — Opinion":"Ops.Cal.Atty.Gen.",     # new court added by Ashish (26/12/2025)
-        "Texas Judicial Panel on Multidistrict Litigation.": "Tex. J.P.M.L."    # new court added by Ashish (26/12/2025)
+"Superior Court of Connecticut":"Conn. Super. Ct.",                 # new court added by Ashish (26/12/2025)
+"Attorney General of California — Opinion":"Ops.Cal.Atty.Gen.",     # new court added by Ashish (26/12/2025)
+"Texas Judicial Panel on Multidistrict Litigation.": "Tex. J.P.M.L."    # new court added by Ashish (26/12/2025)
     }
     return juris_code_an_name
 
