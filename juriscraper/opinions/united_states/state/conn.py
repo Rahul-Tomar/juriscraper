@@ -97,7 +97,7 @@ class Site(OpinionSiteLinear):
             # curr_date = datetime.strptime(date_filed, "%m/%d/%Y").strftime("%d/%m/%Y")
             curr_date = datetime.strptime(date_filed, "%B %d, %Y").strftime("%d/%m/%Y")
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
-            if res == 1:
+            if res >= 0:
                 return
             dockets, name = self.extract_dockets_and_name(row)
             pdf_url = row.get("href")
@@ -113,6 +113,7 @@ class Site(OpinionSiteLinear):
                     "docket": dockets.split(', '),
                     "date": date_filed,
                     "date_filed_is_approximate": date_filed_is_approximate,
+                    "status":"Published"
                 }
             )
 

@@ -27,9 +27,9 @@ class Site(OpinionSiteLinear):
                     cleaned_list = [item.strip() for item in docket if item.strip()]
                     date = str(li.xpath("./a/text()")[2]).strip()
                 else:
-                    docket = str(li.xpath("./a/text()")[2]).replace("AWCC#", "").replace("\t", "").strip().replace("&", ",").split(",")
+                    docket = str(li.xpath("./a/text()")[1]).replace("AWCC#", "").replace("\t", "").strip().replace("&", ",").split(",")
                     cleaned_list = [item.strip() for item in docket if item.strip()]
-                    date = str(li.xpath("./a/text()")[3]).strip()
+                    date = str(li.xpath("./a/text()")[2]).strip()
                 curr_date = datetime.strptime(date, "%B %d, %Y").strftime("%d/%m/%Y")
                 res = CasemineUtil.compare_date(self.crawled_till, curr_date)
                 if res == 1:
@@ -40,6 +40,7 @@ class Site(OpinionSiteLinear):
                 self.cases.append({
                     "date":date,
                     "docket":cleaned_list,
+                    "status":self.status,
                     "url":url,
                     "name":title
                 })

@@ -88,25 +88,43 @@ class Site(OpinionSite):
     def _get_case_dates(self):
         case_dates = []
         path = f"{self.path_base}/td[1]"
-        for cell in self.html.xpath(path):
-            date_string = html.tostring(
-                cell, method="text", encoding="unicode"
-            )
-            date_string = clean_if_py3(date_string).strip()
-            if date_string:
-                date_string = date_string.replace(".","").replace("Sept ", "September ")
-                match = re.match(r"([A-Za-z]{3}) (\d{1,2}), (\d{4})", date_string)
-                date_obj=''
-                if match:
-                    date_obj=datetime.strptime(match.group(),"%b %d, %Y").strftime("%d/%m/%Y")
-                else:
-                    date_obj = datetime.strptime(date_string, "%B %d, %Y").strftime("%d/%m/%Y")
 
-                res=CasemineUtil.compare_date(self.crawled_till,date_obj)
-                if res==1:
+        for cell in self.html.xpath(path):
+            date_string = html.tostring(cell, method="text",
+                                        encoding="unicode")
+            date_string = clean_if_py3(date_string).strip()
+
+            if date_string:
+                # normalize messy HTML date text
+                date_string = (
+                    date_string.replace(".", "")
+                    .replace("Sept ", "September ")
+                )
+
+                # fix spacing problems
+                date_string = re.sub(r"\s*,\s*", ", ",
+                                     date_string)  # normalize comma spacing
+                date_string = re.sub(r"\s+", " ",
+                                     date_string)  # remove extra spaces
+
+                # remove comma for safe parsing
+                clean_date = date_string.replace(",", "")
+
+                try:
+                    dt = datetime.strptime(clean_date, "%B %d %Y")
+                except ValueError:
+                    dt = datetime.strptime(clean_date, "%b %d %Y")
+
+                date_obj = dt.strftime("%d/%m/%Y")
+
+                res = CasemineUtil.compare_date(self.crawled_till, date_obj)
+                if res == 1:
                     break
-                case_dates.append(convert_date_string(date_string))
-                self.ctr+=1
+
+                case_dates.append(
+                    convert_date_string(dt.strftime("%B %d, %Y")))
+                self.ctr += 1
+
         return case_dates
 
     def _get_docket_numbers(self):
