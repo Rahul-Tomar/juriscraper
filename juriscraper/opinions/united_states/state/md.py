@@ -15,7 +15,7 @@ from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 class Site(OpinionSiteLinear):
     base_url = "https://www.mdcourts.gov/cgi-bin/indexlist.pl?court={}&year={}&order=bydate&submit=Submit"
-    court = "coa"
+    court = "cosa"
     start_year = 1995
     current_year = None
     empty_cite_strings = {"slip.op.", "."}

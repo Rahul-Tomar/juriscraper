@@ -35,9 +35,9 @@ class Site(OpinionSiteLinear):
             if classname == "result-heading teal-bg p-2 mb-3 text-center":
                 date = row.xpath(".//h3/text()")[0]
             elif classname=="accordion-item case-result":
-                dock = row.xpath(".//p[@class='case-number teal-text mb-0']/text()")[0]
-                name = row.xpath(".//p[@class='case-name teal-text']/text()")[0]
-                summ = row.xpath(".//div[@class='result-info']/p/text()")
+                dock = row.xpath(".//span[@class='case-number teal-text']/text()")[0]
+                name = row.xpath(".//span[@class='case-name teal-text']/text()")[0]
+                summ = row.xpath(".//div[@class='result-info']/p/text()")[0]
                 if summ:
                     summary = summ[0]
                 else:
@@ -50,6 +50,7 @@ class Site(OpinionSiteLinear):
                         "name": name,
                         "url": url,
                         "summary": summary,
+                        "status":self.status
                     }
                 )
 

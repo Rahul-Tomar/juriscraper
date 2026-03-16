@@ -18,85 +18,115 @@ class Site(OpinionSiteLinear):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
-        self.baseurl = "https://www.dccourts.gov/court-of-appeals/opinions-memorandum-of-judgments"
+        self.baseurl = "https://www.dccourts.gov/court-of-appeals/opinions-and-memorandum-of-judgments"
         self.page=0
+        self.nextPage=True
         self.status = "Published"
 
     def _process_html(self) -> None:
-        for row in self.html.xpath(".//table[@class='table table-bordered table-condensed table-hover table-striped']//tbody/tr"):
-            # docket = row.xpath(".//td[1]/a/text()")[0]
-            # url=row.xpath(".//td[1]//a/@href")[0]
-            td_element = row.xpath(".//td[1]")[0]
 
-            anchor_tag = td_element.xpath(".//a")
+        empty = self.html.xpath("//div[@class='view-empty']")
+        if empty:
+            self.nextPage = False
+            return
 
-            if anchor_tag:
-                docket = anchor_tag[0].xpath("text()")[0]
-                url = anchor_tag[0].xpath("@href")[0]
+        rows = self.html.xpath(
+            "//div[@class='table-wrapper']//table[@class='cols-5']//tbody/tr")
+
+        for row in rows:
+
+            # -------- docket + url --------
+            anchor = row.xpath(".//td[1]//a")
+
+            if anchor:
+                docket = anchor[0].xpath("text()")[0].strip()
+                url = anchor[0].xpath("@href")[0]
             else:
                 docket = row.xpath(".//td[1]/text()")[0].strip()
                 url = "null"
-            name = row.xpath(".//td[2]/text()")[0]
-            jud = row.xpath(".//td[5]/text()")[0].strip()
-            if jud == 'Per Curiam':
-                judge = ""
-            else:
-                judge = jud
 
+            # make absolute url
+            if url and not url.startswith("http"):
+                url = "https://www.dccourts.gov" + url
+
+            # -------- case name --------
+            name = row.xpath(".//td[2]/text()")
+            name = name[0].strip() if name else ""
+
+            # -------- date --------
             date_str = row.xpath(".//td[3]/text()")[0].strip()
-            curr_date = datetime.strptime(date_str, "%b %d, %Y").strftime("%d/%m/%Y")
+
+            curr_date = datetime.strptime(date_str, "%b %d, %Y").strftime(
+                "%d/%m/%Y")
+
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
             if res == 1:
                 return
-            result = re.split(r'[,&]\s*', docket)
 
-            disposition = row.xpath(".//td[4]/text()")[0].strip()
+            # -------- disposition --------
+            disposition = row.xpath(".//td[4]/text()")
+            disposition = disposition[0].strip() if disposition else ""
 
+            # -------- judge --------
+            judge_text = row.xpath(".//td[5]/text()")
+            judge_text = judge_text[0].strip() if judge_text else ""
+
+            if judge_text == "Per Curiam":
+                judge = ""
+            else:
+                judge = judge_text
+
+            # -------- docket split --------
+            result = re.split(r"[,&]\s*", docket)
             cleaned_list = [item.strip() for item in result]
-            if not url.startswith("http") and url:
-                url = "https://www.dccourts.gov"+url
+
+            # -------- append case --------
             self.cases.append(
                 {
                     "date": date_str,
                     "url": url,
-                    "name": name.strip(),
+                    "name": name,
                     "docket": cleaned_list,
-                    "judge":[judge],
-                    "disposition":disposition
+                    "judge": [judge],
+                    "disposition": disposition,
+                    "status":"Published"
                 }
             )
 
-    def set_url(
-        self, start: Optional[date] = None, end: Optional[date] = None
-    ) -> None:
+    def set_url(self, start: Optional[date] = None,
+                end: Optional[date] = None) -> None:
 
         if not start:
             start = datetime.today() - timedelta(days=15)
             end = datetime.today()
 
-        start = start.strftime("%Y-%m-%d")
-        end = end.strftime("%Y-%m-%d")
+        start = start.strftime("%m/%d/%Y")
+        end = end.strftime("%m/%d/%Y")
+
         params = {
-            "field_date_value": start,
-            "field_date_value_1": end,
-            "page": self.page,
-            # "Submit": "Search",
+            "date": start,
+            "date_range": end,
+            "type": "Opinions"
         }
+
         self.url = f"{self.baseurl}?{urlencode(params)}"
 
     def _download_backwards(self, dates: Tuple[date]) -> None:
         logger.info("Backscraping for range %s %s", *dates)
-        while True:
+        while self.nextPage:
             self.set_url(*dates)
+            self.url = f"{self.url}&page={self.page}"
+            print(self.url)
             self.html = self._download()
             cases_before = len(self.cases)
             self._process_html()
             cases_after = len(self.cases)
-            if cases_after == cases_before:
-                logger.info("No more cases found. Stopping pagination.")
-                break
+            # if cases_after == cases_before:
+            #     logger.info("No more cases found. Stopping pagination.")
+            #     break
 
             self.page += 1
+
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         print(f"start date is {start_date} and end date is {end_date}")
