@@ -243,6 +243,8 @@ def crawl_court(court, court_url, crawled_till, court_type):
             # PDF extraction
             try:
                 pdf_tag = case_soup.select_one(".pdf-icon")
+                if not pdf_tag:
+                    pdf_tag = case_soup.select_one('a[href*=".pdf"]')
                 if pdf_tag:
                     href = pdf_tag.get("href")
 

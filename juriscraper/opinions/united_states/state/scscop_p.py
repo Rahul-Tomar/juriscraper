@@ -37,7 +37,7 @@ class Site(OpinionSiteLinear):
             elif classname=="accordion-item case-result":
                 dock = row.xpath(".//span[@class='case-number teal-text']/text()")[0]
                 name = row.xpath(".//span[@class='case-name teal-text']/text()")[0]
-                summ = row.xpath(".//div[@class='result-info']/p/text()")[0]
+                summ= row.xpath(".//div[@class='result-info']/p/text()")
                 if summ:
                     summary = summ[0]
                 else:
