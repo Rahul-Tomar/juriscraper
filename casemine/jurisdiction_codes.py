@@ -329,7 +329,7 @@ def jxcode():
     jx.append("usc")
     jx.append("cfr")
     jx.append("fedstat")
-
+    jx.append("md")   #supreme court of maryland
     return jx
 
 # jurisdiction_levels.py
@@ -732,7 +732,7 @@ def level():
     level.append("850")
     level.append("850")
     level.append("850")
-
+    level.append("1000")  #Supreme court of maryland
     return level
 
 # jurisdiction_codes.py
@@ -1135,6 +1135,8 @@ def code_list():
     codes.append("E.E.O.C.")
     codes.append("T.T.A.B")
     codes.append("P.T.A.B.")
+    codes.append("Md.")   #Supreme court of Maryland
+
 
     return codes
 
@@ -1500,7 +1502,8 @@ def get_juris_code():
 "Southern District of West Virginia": "S.D.W. Va.",
 "Superior Court of Connecticut":"Conn. Super. Ct.",                 # new court added by Ashish (26/12/2025)
 "Attorney General of California — Opinion":"Ops.Cal.Atty.Gen.",     # new court added by Ashish (26/12/2025)
-"Texas Judicial Panel on Multidistrict Litigation.": "Tex. J.P.M.L."    # new court added by Ashish (26/12/2025)
+"Texas Judicial Panel on Multidistrict Litigation.": "Tex. J.P.M.L.",  # new court added by Ashish (26/12/2025)
+"Supreme Court of Maryland":"Md."   #Supreme court of Maryland
     }
     return juris_code_an_name
 
