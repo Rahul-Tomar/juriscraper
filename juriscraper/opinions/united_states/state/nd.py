@@ -41,7 +41,6 @@ class Site(OpinionSiteLinear):
         # This may cause the scrape to abort prematurely due to number of
         # consecutive duplicates
         seen_urls = set()
-
         for row in self.html.xpath('//table//div[@class="row"]'):
             raw_values = list(map(str.strip, row.xpath("./div/p[1]/text()")))
             values = []
@@ -56,9 +55,14 @@ class Site(OpinionSiteLinear):
             summary = (
                 " ".join(raw_values[5:]).strip() if len(raw_values) > 5 else ""
             )
+            onclick_list = row.xpath(".//button[@onclick]/@onclick")
+
+            if not onclick_list:
+                continue
+
             url = urljoin(
                 self.base_url,
-                row.xpath(".//button[@onclick]/@onclick")[0].split("'")[1],
+                onclick_list[0].split("'")[1],
             )
             if url in seen_urls:
                 logger.info(
@@ -78,7 +82,6 @@ class Site(OpinionSiteLinear):
                 case["per_curiam"] = True
 
             case['docket']=[case['docket']]
-
             self.cases.append(case)
 
     def clean_name(self, name: str) -> Tuple[str, str]:
