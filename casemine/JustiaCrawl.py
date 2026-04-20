@@ -12,42 +12,42 @@ from jurisdiction_codes import get_juris_code
 from jurisdiction_codes import code_list
 from jurisdiction_codes import level
 PROXIES = [
-    # {"server": "http://23.236.154.202:8800"},
+    {"server": "http://23.236.154.202:8800"},
+    {"server": "http://46.175.155.214:8800"},
     {"server": "http://23.236.154.249:8800"},
+    {"server": "http://46.175.154.158:8800"},
     {"server": "http://23.236.197.155:8800"},
-    {"server": "http://156.230.239.253:8800"},
-    {"server": "http://156.241.224.100:8800"},
-    {"server": "http://156.230.239.89:8800"},
-    {"server": "http://156.241.225.170:8800"},
+    {"server": "http://46.175.153.178:8800"},
     {"server": "http://23.236.197.227:8800"},
+    {"server": "http://46.175.155.243:8800"},
     {"server": "http://23.236.197.153:8800"},
+    {"server": "http://46.175.153.189:8800"},
     {"server": "http://156.241.221.148:8800"},
+    {"server": "http://46.175.155.7:8800"},
     {"server": "http://156.241.216.136:8800"},
-    {"server": "http://156.241.224.230:8800"},
-    {"server": "http://156.241.225.93:8800"},
-    {"server": "http://156.230.239.165:8800"},
-    {"server": "http://156.230.239.25:8800"},
-    {"server": "http://156.230.239.82:8800"},
-    {"server": "http://156.241.224.217:8800"},
-    {"server": "http://156.241.229.153:8800"},
-    {"server": "http://156.230.239.219:8800"},
-    {"server": "http://156.241.225.161:8800"},
-    {"server": "http://156.230.237.72:8800"},
+    {"server": "http://46.175.152.42:8800"},
     {"server": "http://156.241.216.8:8800"},
+    {"server": "http://46.175.152.135:8800"},
     {"server": "http://156.241.216.194:8800"},
+    {"server": "http://46.175.154.99:8800"},
     {"server": "http://156.241.221.92:8800"},
-    {"server": "http://156.230.237.72:8800"},
-    {"server": "http://156.230.237.123:8800"},
-    {"server": "http://156.230.237.42:8800"},
-    {"server": "http://156.241.229.113:8800"},
-    {"server": "http://156.241.229.151:8800"},
-    {"server": "http://156.241.224.171:8800"},
-    {"server": "http://156.241.229.198:8800"},
-    {"server": "http://156.241.224.167:8800"},
-    {"server": "http://156.241.225.81:8800"},
-    {"server": "http://156.230.237.12:8800"},
-    {"server": "http://156.230.237.195:8800"},
-    {"server": "http://156.230.237.135:8800"}
+    {"server": "http://46.175.154.19:8800"},
+
+    {"server": "http://46.175.155.187:8800"},
+    {"server": "http://46.175.153.40:8800"},
+    {"server": "http://46.175.155.160:8800"},
+    {"server": "http://46.175.155.176:8800"},
+    {"server": "http://46.175.154.236:8800"},
+    {"server": "http://46.175.153.42:8800"},
+    {"server": "http://46.175.154.76:8800"},
+    {"server": "http://46.175.152.11:8800"},
+    {"server": "http://46.175.152.149:8800"},
+    {"server": "http://46.175.154.58:8800"},
+    {"server": "http://46.175.153.230:8800"},
+    {"server": "http://46.175.155.38:8800"},
+    {"server": "http://46.175.152.96:8800"},
+    {"server": "http://46.175.152.131:8800"},
+    {"server": "http://46.175.153.62:8800"}
 ]
 
 proxy_index = 0
@@ -69,7 +69,7 @@ counter = 0
 def get_page_html(url):
     global proxy_index
 
-    for attempt in range(10):
+    for attempt in range(20):
         try:
             with sync_playwright() as p:
                 proxy = PROXIES[proxy_index]
@@ -398,7 +398,7 @@ def run_justia():
     for i in range(len(courts)):
 
         court = courts[i]
-        # if court!="Missouri Court of Appeals":
+        # if court!="Southern District New York":
         #     continue
         court_url = urls[i] + str(datetime.now().year) + "/"
         # court_url = "https://law.justia.com/cases/missouri/court-of-appeals/2025/"
