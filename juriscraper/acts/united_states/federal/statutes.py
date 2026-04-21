@@ -31,7 +31,8 @@ class Statutes:
         self.base_url = "https://www.govinfo.gov/wssearch/rb/uscode"
         self.param1 = "fetchChildrenOnly="
         self.proxies = {
-            'http': 'http://23.236.154.202:8800', 'https': 'http://23.236.154.202:8800'}
+            'http': 'http://156.241.221.92:8800', 'https': 'http://156.241.221.92:8800'}
+        self.failed_granules = []
 
     def hit_url(self, url):
         attempts = 5
@@ -181,7 +182,7 @@ class Statutes:
 
     def fetch_n_get_xml(self, xml_url, ctr):
         dict_data = None
-        max_attempts = 10
+        max_attempts = 5
         for attempt in range(1, max_attempts + 1):
             try:
                 xml_resp = requests.get(url=xml_url, proxies=self.proxies, timeout=10)
@@ -213,11 +214,18 @@ class Statutes:
                 self.logger.info("All retry attempts failed!")
                 dict_data = None
 
-        del dict_data['mods']['@xmlns']
-        del dict_data['mods']['@xmlns:xsi']
-        del dict_data['mods']['@xmlns:xlink']
-        del dict_data['mods']['@xsi:schemaLocation']
-        del dict_data['mods']['@version']
+        # del dict_data['mods']['@xmlns']
+        if dict_data is None:
+            return None
+        dict_data['mods'].pop('@xmlns', None)
+        dict_data['mods'].pop('@@xmlns:xsi', None)
+        dict_data['mods'].pop('@@xmlns:xlink', None)
+        dict_data['mods'].pop('@@xsi:schemaLocation', None)
+        dict_data['mods'].pop('@@version', None)
+        # del dict_data['mods']['@xmlns:xsi']
+        # del dict_data['mods']['@xmlns:xlink']
+        # del dict_data['mods']['@xsi:schemaLocation']
+        # del dict_data['mods']['@version']
         return dict_data
 
     def get_statutes(self,year):
@@ -244,13 +252,47 @@ class Statutes:
                         print(f"{i} - id-{granule_id} Duplicate")
                         i+=1
                         continue
+                    #
+                    # if "USCODE-1994-title8-chap11" in str(granule_id):
+                    #     continue
+                    # elif "USCODE-1994-title11-chap9" in str(granule_id):
+                    #     continue
+                    # elif "USCODE-1994-title12-chap2" in str(granule_id):
+                    #     continue
+                    # elif "USCODE-1994-title15-chap73" in str(granule_id):
+                    #     continue
 
                     more_meta_url = f"https://www.govinfo.gov/wssearch/getContentDetail?packageId={package_id}&granuleId={granule_id}"
                     more_meta_json = self.hit_url(more_meta_url)
-                    mods_link = str(more_meta_json["download"]["modslink"]).replace('//','')
+
+                    if not more_meta_json:
+                        print(
+                            f"{i} - id-{granule_id} skipped (metadata fetch failed)")
+                        self.failed_granules.append(granule_id)
+                        i += 1
+                        continue
+
+                    try:
+                        mods_link = str(
+                            more_meta_json["download"]["modslink"]).replace(
+                            '//', '')
+                    except Exception as e:
+                        print(
+                            f"{i} - id-{granule_id} skipped (invalid structure: {e})")
+                        self.failed_granules.append(granule_id)
+                        i += 1
+                        continue
 
                     mods_link = f"https://{mods_link}"
                     dict_data = self.fetch_n_get_xml(mods_link,i)
+
+                    if not dict_data or 'mods' not in dict_data:
+                        print(
+                            f"{i} - id-{granule_id} skipped (metadata fetch failed)")
+                        self.failed_granules.append(granule_id)
+                        i += 1
+                        continue
+
                     processed_data =  self.sanitize_json(dict_data['mods'])
 
                     # creating matched citation_string
@@ -280,6 +322,9 @@ class Statutes:
                     self.process_data(processed_data)
                     i+=1
         self.client.close()
+        with open("failed_granules.txt", "w") as f:
+            for gid in self.failed_granules:
+                f.write(f"{gid}\n")
 
 act = Statutes()
-act.get_statutes(2010)
+act.get_statutes(1994)
