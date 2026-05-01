@@ -7,7 +7,8 @@ class Site(nyappdiv1_motions.Site):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.link_regex = 'mots_ad2_'
-        self.base_url="https://nycourts.gov/reporter/motindex/mots_ad2_list.shtml"
+        # self.base_url="https://nycourts.gov/reporter/motindex/mots_ad2_list.shtml"
+        self.base_url = "https://nycourts.gov/reporter/current/index/mots_ad2_list.shtml"
 
     def get_class_name(self):
         return "nyappdiv2_motions"

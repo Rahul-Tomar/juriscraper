@@ -26,8 +26,8 @@ class Site(OpinionSiteLinear):
         )
         self.make_backscrape_iterable(kwargs)
         self.proxies={
-            'http': 'http://156.241.224.100:8800',
-            'https': 'http://156.241.224.100:8800',
+            'http': 'http://156.241.221.92:8800',
+            'https': 'http://156.241.221.92:8800',
         }
 
     def set_url(

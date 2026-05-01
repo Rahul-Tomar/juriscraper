@@ -10,7 +10,8 @@ from urllib.parse import urljoin
 
 import certifi
 import requests
-
+from playwright.sync_api import sync_playwright
+from lxml import html as lxml_html
 from casemine.casemine_util import CasemineUtil
 from casemine.constants import MAIN_PDF_PATH
 from juriscraper.AbstractSite import logger
@@ -39,24 +40,39 @@ class Site(OpinionSiteLinear):
             "http": "http://23.236.154.202:8800",
             "https": "http://23.236.154.202:8800"
         }
-        self.request = {
-            "verify": certifi.where(),
-            "session": requests.Session(),
-            "headers": {
-                "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
-                "Host": "www.ndcourts.gov",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.5",
-                "Accept-Encoding": "gzip, deflate, br, zstd",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "cross-site",
-                "Priority": "u=0",
-                "Cookie":"_ga=GA1.1.1806381042.1744970826; _ga_29RGJ6WCSR=GS1.1.1744970826.1.1.1744971051.0.0.0; _ga_72465JF1Y8=GS2.1.s1776663425$o11$g1$t1776663434$j51$l0$h0; cf_clearance=PfrGU8_HNdAglRtYBkcas3nsCOcedFBA9LEqPdkEsD8-1776663427-1.2.1.1-hEMl0j6B0JrKxQDA6VhtuzQG.YtkmQ_zpTGf8zOweXHh8ZVK_9jIoeNCeW5uo.UFof1VuHFcf7tbr4nu45ZmI1vk9kRP_c1nuKY0lz52j2t_tUxWC9TDEVupJ1_OiTDYwXsIQlaUdUFgLwpNXkKTyYcb7cuHLAvZ7nJeL9Ty_.wneTISXid9Onklr.aWO3EjnKPQCU_4dEkA3cyybE5JSreeZ3YeDtn.4C0UBXyo4WVRXSB1a3e8t7bXkINvunXGx_nZAXhnEmoZJQMV.MXkoiSnh.VYFJVlIIVVpelHc9XQ4TbZPHoHEjJs3lyG2M3q5Qx3m8UTvnKClEyZY3wTSA; __cf_bm=KKSZRxhwek.2w16ZF.t0lYMrvpMPoqj7VVa2QLPnbkU-1776663427.1990614-1.0.1.1-JcokwPwYoZfCwQQIJhKLuJJqqe8A9KP_LFQxEaqtyMIzQxNGml6W1vcP.AccYOript3pEJ3GjN36C1uT2DE_uJqMV7dKcIds6iahXNM1THhhnsLLZnpQ.DDUeoZFGKOQ"
-            }
-        }
+
+    def _download(self, request_dict={}):
+        self.downloader_executed = True
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                proxy={"server": "http://23.236.154.202:8800"}
+            )
+
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+            )
+
+            page = context.new_page()
+
+            page.goto(self.url, timeout=60000, wait_until="domcontentloaded")
+
+            # allow JS + Cloudflare
+            page.wait_for_timeout(3000)
+
+            # wait for real content
+            page.wait_for_selector("div.row", timeout=20000)
+
+            # ✅ THIS is the key line
+            html_content = page.content()
+
+            browser.close()
+
+        # convert to lxml object (important)
+        self.html = lxml_html.fromstring(html_content)
+
+        return self.html
 
     def _process_html(self) -> None:
         """Most values are inside a <p>: whitespace and

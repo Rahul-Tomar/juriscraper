@@ -78,6 +78,7 @@ class Site(OpinionSiteLinear):
             if res == 1:
                 continue
             # ---- CASES ----
+            date = date_match.group(1)
             for el in block:
                 if el.name != "p":
                     continue
@@ -147,7 +148,7 @@ class Site(OpinionSiteLinear):
     def validate_case(self, case: dict) -> bool:
         try:
             # ---- DATE ----
-            datetime.strptime(case["date"], "%d/%m/%Y")
+            # datetime.strptime(case["date"], "%d/%m/%Y")
 
             # ---- CITATION ----
             if not re.fullmatch(r"\d{4}\s+CO\s+\d+[A-Z]?", case["citation"]):

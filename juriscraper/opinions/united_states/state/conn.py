@@ -97,7 +97,7 @@ class Site(OpinionSiteLinear):
             # curr_date = datetime.strptime(date_filed, "%m/%d/%Y").strftime("%d/%m/%Y")
             curr_date = datetime.strptime(date_filed, "%B %d, %Y").strftime("%d/%m/%Y")
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
-            if res >= 0:
+            if res > 0:
                 return
             dockets, name = self.extract_dockets_and_name(row)
             pdf_url = row.get("href")
@@ -227,23 +227,8 @@ class Site(OpinionSiteLinear):
 
         # ---- HEADERS ----
         headers = {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br, zstd",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Connection": "keep-alive",
-            # "Sec-Fetch-Dest": "document",
-            # "Sec-Fetch-Mode": "navigate",
-            # "Sec-Fetch-Site": "none",
-            # "Sec-Fetch-User": "?1",
-            # "Upgrade-Insecure-Requests": "1",
-            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
-        }
-
-        # ---- COOKIES ----
-        cookies = {
-            "_ga": "GA1.1.454464960.1744956244",
-            "_ga_B64EXBCE9P": "GS1.1.1744956243.1.1.1744956386.52.0.0",
-            "_hjSessionUser_218205": "eyJpZCI6ImRjZGRiZDg2LTJmNzAtNWIyNC1iNTVlLTgyMDgyOGZkMmFmYSIsImNyZWF0ZWQiOjE3NDQ5NTYyNDQ2MzcsImV4aXN0aW5nIjp0cnVlfQ=="
+            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         }
 
         scraper = cloudscraper.create_scraper()
@@ -260,7 +245,7 @@ class Site(OpinionSiteLinear):
             try:
                 resp = scraper.get(
                     self.url,
-                    headers=headers,
+                    # headers=headers,
                     proxies=proxies,
                     timeout=timeout
                 )

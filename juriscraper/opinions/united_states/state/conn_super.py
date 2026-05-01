@@ -10,15 +10,16 @@ class Site(OpinionSiteLinear):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.status = "Published"
-        self.url = "https://jud.ct.gov/Superiorcourt/MOD/MODListing.aspx"
+        self.url = "https://www.jud.ct.gov/LegalResources/MOD"
 
     def _download(self, request_dict={}):
         pass
 
     def _process_html(self):
-        # print("hello")
         print(f"Downloading cases from {self.url}")
+
         PROXY = "http://23.236.197.155:8800"
+
         with sync_playwright() as p:
             browser = p.firefox.launch(
                 headless=True,
@@ -32,74 +33,89 @@ class Site(OpinionSiteLinear):
             page = context.new_page()
 
             # STEP 1: warm session
-            page.goto("https://jud.ct.gov/", wait_until="networkidle",
+            page.goto("https://jud.ct.gov/", wait_until="domcontentloaded",
                       timeout=60000)
 
             # STEP 2: MOD page
             page.goto(
-                "https://jud.ct.gov/Superiorcourt/MOD/MODListing.aspx",
-                wait_until="networkidle",
+                "https://www.jud.ct.gov/LegalResources/MOD",
+                wait_until="domcontentloaded",
                 timeout=60000
             )
 
-            # STEP 3: expand ALL collapsable sections (JS-level click = most reliable)
+            # STEP 3: expand all accordions
             page.evaluate("""
-                document.querySelectorAll('span.minButton').forEach(btn => btn.click());
+                document.querySelectorAll('.accordion-button').forEach(btn => {
+                    if (btn.classList.contains('collapsed')) {
+                        btn.click();
+                    }
+                });
             """)
 
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(2000)
 
-            # STEP 4: iterate through each week section
-            sections = page.query_selector_all("article.collapsable")
+            # STEP 4: get expanded sections
+            sections = page.query_selector_all(".accordion-collapse.show")
+
             for section in sections:
-                # Extract week starting date
-                header_text = section.query_selector("header").inner_text()
-                week = header_text.split("Entries for the week starting on:")[
-                    -1].strip().rstrip(":")
 
-                # print(f"\nWEEK: {week}")
-                date_part = week.split(':')[0]
-                m, d, y = date_part.split('-')
-                formatted_date = f"{d}/{m}/{y}"
+                # ✅ Extract week text
+                week = section.evaluate(
+                    "el => el.previousElementSibling.querySelector('button').innerText"
+                ).strip()
+
+                # ✅ FIXED date extraction
+                date_part = week.split(":")[-1].strip()  # <-- IMPORTANT FIX
+
                 dt = datetime.strptime(date_part, "%m-%d-%Y")
 
-                date = dt.strftime("%d %b , %Y")
-                res = CasemineUtil.compare_date(self.crawled_till, formatted_date)
+                formatted_date = dt.strftime("%d/%m/%Y")
+                date = dt.strftime("%d %b, %Y")
+
+                # optional filter
+                res = CasemineUtil.compare_date(self.crawled_till,
+                                                formatted_date)
                 if res == 1:
                     continue
-                # Each case entry
-                cases = section.query_selector_all(
-                    "div.collapsable_cont article.MODList > div.fullWidth"
-                )
+
+                # ✅ FIXED selector (NEW DOM STRUCTURE)
+                cases = section.query_selector_all(".accordion-body .row")
 
                 for case in cases:
-                    docket = case.query_selector(
-                        ".DocketNo").inner_text().strip()
-                    case_name = case.query_selector(
-                        ".CaseName").inner_text().strip()
+                    docket_el = case.query_selector(".col-3 span")
+                    name_el = case.query_selector(".col-5 span")
+                    link_el = case.query_selector("a.pdf-link")
 
-                    link_el = case.query_selector(".DocURL a")
-                    url = link_el.get_attribute("href") if link_el else ""
+                    if not (docket_el and name_el and link_el):
+                        continue
 
-                    # Normalize URL
-                    if url and not url.startswith("http"):
-                        url = "https://jud.ct.gov/Superiorcourt/MOD/" + url.lstrip("/")
+                    docket = docket_el.inner_text().strip()
+                    if not docket:
+                        raise Exception("Docket cannot be null or blank")
+                    case_name = name_el.inner_text().strip()
+                    url = link_el.get_attribute("href")
+
+                    # normalize URL
+                    if url and url.startswith("/"):
+                        url = "https://jud.ct.gov" + url
+
+                    if url=="https://www.jud.ct.gov/LegalResources/MOD/DocumentPreview?RandomKey=01C0CC34-9829-4D39-A25E-63BEC34BAF16" and docket=="TSRCV194009799S":
+                        break # becuase after this record it moved to a new link
 
                     self.cases.append({
                         "date": date,
                         "docket": docket,
                         "name": case_name,
                         "url": url,
-                        "status":self.status
+                        "status": self.status
                     })
-
 
                     print({
                         "date": date,
                         "docket": docket,
                         "name": case_name,
                         "doc_url": url,
-                        "status":self.status
+                        "status": self.status
                     })
 
             browser.close()
@@ -187,7 +203,58 @@ class Site(OpinionSiteLinear):
         self.parse()
         return len(self.cases)
 
+    #Fetch duplicate is changed as per changes in title because it is moved to new link and got some difference in title in v and vs and also now we are getting docket also
+    def _fetch_duplicate(self, data):
+        pdf_url = str(data.get("pdf_url"))
+        title = data.get("title")
+        date = data.get("date")
+        docket = data.get("docket")
+        html_url = data.get("html_url")
+        court_name = data.get("court_name")
+        object_id = None
+        if pdf_url.__eq__("") or (pdf_url is None) or pdf_url.__eq__("null"):
+            if html_url.__eq__("") or (html_url is None) or html_url.__eq__("null"):
+                return object_id
+            else:
+                query1 = {"html_url":html_url}
+                dup1 = self.judgements_collection.find_one(query1)
+                if not dup1 is None:
+                    query2 = {"court_name": court_name, "date": date}
+                    dup2 = self.judgements_collection.find_one(query2)
+                    if not dup2 is None:
+                        # Check if the document already exists and has been processed
+                        processed = dup2.get("processed")
+                        if processed == 10:
+                            raise Exception("Judgment already Exists!")  # Replace with your custom DuplicateRecordException
+                        else:
+                            object_id = dup2.get("_id")
 
+        else:
+            query3 = {"pdf_url":pdf_url}
+            dup = self.judgements_collection.find_one(query3)
+            if dup is None:
+                query4 = {"court_name":court_name,"date":date}
+                dup2=self.judgements_collection.find_one(query4)
+                if not dup2 is None:
+                    # Check if the document already exists and has been processed
+                    processed = dup2.get("processed")
+                    if processed == 10:
+                        raise Exception("Judgment already Exists!")  # Replace with your custom DuplicateRecordException
+                    else:
+                        object_id = dup2.get("_id")
+            else:
+                query4 = {
+                    "court_name": court_name, "date": date}
+                dup2 = self.judgements_collection.find_one(query4)
+                if not dup2 is None:
+                    # Check if the document already exists and has been processed
+                    processed = dup2.get("processed")
+                    if processed == 10:
+                        raise Exception("Judgment already Exists!")
+                         # Replace with your custom DuplicateRecordException
+                    else:
+                        object_id = dup2.get("_id")
+        return object_id
 
     def get_class_name(self):
         return 'conn_super'

@@ -1,8 +1,10 @@
+import os
+import re
 from datetime import datetime
 from urllib.parse import urljoin
 
 import cloudscraper
-from lxml import html
+from lxml import html , etree
 
 from casemine.casemine_util import CasemineUtil
 from juriscraper.opinions.united_states.state import ny_new
@@ -13,7 +15,7 @@ class Site(ny_new.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
-        self.base_url="https://nycourts.gov/reporter/motindex/mots_ad1_list.shtml"
+        self.base_url="https://nycourts.gov/reporter/current/index/mots_ad1_list.shtml"
         self.link_regex='mots_ad1_'
         self.proxies = {
             # 'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',
@@ -27,8 +29,11 @@ class Site(ny_new.Site):
         current_date = None
         for elem in self.html.xpath("//tr | //caption//b"):
             text = elem.text_content().strip()
+            text=text.replace("nd","")
             if text.startswith("Motions Decided"):
                 current_date = text.replace("Motions Decided", "").strip()
+                current_date = re.sub(r'(\d+)(st|nd|rd|th)', r'\1',
+                                      current_date)
                 if '.' in current_date:
                     current_date = current_date.replace(".",",")
 
@@ -40,6 +45,8 @@ class Site(ny_new.Site):
                     continue
                 title_el = cells[0].xpath(".//a")
                 title = title_el[0].text_content().strip() if title_el else cells[0].text_content().strip()
+                if title.endswith(" (PDF)"):
+                    title = title[:-6]
                 url = urljoin(self.BASE_URL, title_el[0].get("href")) if title_el else ""
                 doc_str=cells[1].text_content().strip()
                 docket = (str(doc_str).replace(" SCR","-SCR").replace(" CR","-CR").replace(" WC","-WC")
@@ -67,12 +74,15 @@ class Site(ny_new.Site):
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         response = self.scraper.get(self.base_url, proxies=self.proxies, timeout=60)
+
         if response.status_code==200:
-            link_xpath = html.fromstring(response.text)
-            links = link_xpath.xpath(f"//a[starts-with(@href, {self.link_regex}) and contains(@href, '-{end_date.year}')]/@href")
-            for link in links:
-                self.url = f"https://nycourts.gov/reporter/motindex/{link}"
-                self.parse()
+            # link_xpath = html.fromstring(response.text)
+            # links = link_xpath.xpath(f"//a[starts-with(@href, {self.link_regex}) and contains(@href, '-{end_date.year}')]/@href")
+            # for link in links:
+            #     self.url = f"https://nycourts.gov/reporter/motindex/{link}"
+            #     self.parse()
+            self.url=self.base_url
+            self.parse()
         return 0
 
     def get_court_name(self):
