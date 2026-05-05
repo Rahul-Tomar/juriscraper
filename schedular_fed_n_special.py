@@ -13,7 +13,7 @@ from casemine.constants import MAIN_DATABASE_IP, DATABASE_PORT
 
 FOLDERS_TO_SCAN = ["juriscraper/opinions/united_states/federal_appellate", "juriscraper/opinions/united_states/federal_special"]
 RESTRICTED_CLASSES = {'acca_memorandum', 'acca_p', 'acca_summary', 'afcca', 'ag', 'armfor', 'uscgcoca', 'fisc', 'fiscr', 'nmcca', 'uscfc_vaccine_u', 'uscfc_u', 'uscfc', 'uscfc_vaccine', # Federal
-    'ca3_u', 'cadc_u', 'cadc_pi'}
+    'ca3_u', 'cadc_u', 'cadc_pi', 'ca2_u'}
 mongo = MongoClient(
         'mongodb://' + MAIN_DATABASE_IP + ':' + str(DATABASE_PORT) + '/')
 db = mongo["GaugeDB"]

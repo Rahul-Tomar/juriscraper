@@ -67,41 +67,116 @@ class Site(OpinionSite):
     def _request_url_post(self, url):
         headers = {
             "Host": "ww3.ca2.uscourts.gov", "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0", "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.5", "Accept-Encoding": "gzip, deflate, br, zstd", "Connection": "keep-alive", "Upgrade-Insecure-Requests": "1", "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "same-origin", "Sec-Fetch-User": "?1", "Content-Type": "application/x-www-form-urlencoded", "Priority": "u=0, i", "Pragma": "no-cache", "Cache-Control": "no-cache"}
-        self.request['response'] = requests.post(url=url,headers=headers,proxies=self.proxies,params=self.data)
+        self.request['response'] = requests.post(
+            url=url,
+            headers=headers,
+            proxies=self.proxies,
+            data=self.parameters if self.parameters else self.data
+        )
         # print(resp.status_code)
         # print(resp.text)
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        self.url="https://ww3.ca2.uscourts.gov/decisions"
+        self.url="https://ww3.ca2.uscourts.gov/dtSearch/dtisapi6.dll"
         self.method='POST'
         # Parse the date string into a datetime object
         start_date1 = start_date.strftime('%Y/%m/%d')
         end_date1 = end_date.strftime('%Y/%m/%d')
         sdate = start_date1.split('/')
         edate = end_date1.split('/')
-        self.parameters={"opinion":"30","sum_order":"0","IW_DATABASE":"OPN","IW_FIELD_TEXT":"*","IW_FILTER_DATE_AFTER":str(sdate[0])+str(sdate[1])+str(sdate[2]),"IW_FILTER_DATE_BEFORE":str(edate[0])+str(edate[1])+str(edate[2]),"IW_BATCHSIZE":"50","IW_SORT":"-DATE"}
-        self.data=f'opinion=30&sum_order=0&IW_DATABASE=OPN&IW_FIELD_TEXT=*&IW_FILTER_DATE_AFTER={sdate[2]}{sdate[1]}{sdate[0]}&IW_FILTER_DATE_BEFORE={edate[2]}{edate[1]}{edate[0]}&IW_BATCHSIZE=20&IW_SORT=-DATE'
+        self.parameters = {
+            "index": "*{aa12e167958cdbcaa709fa14b9161a4a} OPN",
+            "rctopin": "",
+            "StartDate": f"{sdate[0]}-{sdate[1]}-{sdate[2]}",
+            "EndDate": f"{edate[0]}-{edate[1]}-{edate[2]}",
+            "request": "*",
+            "searchType": "allwords",
+            "cmd": "search",
+            "SearchForm": "%%SearchForm%%",
+            "dtsPdfWh": "*",
+            "OrigSearchForm": "/decisions.html",
+            "autoStopLimit": "5000",
+            "pageSize": "25",
+            "sort": "date",
+            "fileConditions": f'xfilter(date "{sdate[0]}/{sdate[1]}/{sdate[2]}~~{edate[0]}/{edate[1]}/{edate[2]}")',
+            "booleanConditions": ""
+        }
+        self.data = (
+            f"index=*%7Baa12e167958cdbcaa709fa14b9161a4a%7D+OPN"
+            f"&rctopin="
+            f"&StartDate={sdate[0]}-{sdate[1]}-{sdate[2]}"
+            f"&EndDate={edate[0]}-{edate[1]}-{edate[2]}"
+            f"&request=*"
+            f"&searchType=allwords"
+            f"&cmd=search"
+            f"&SearchForm=%25%25SearchForm%25%25"
+            f"&dtsPdfWh=*"
+            f"&OrigSearchForm=%2Fdecisions.html"
+            f"&autoStopLimit=5000"
+            f"&pageSize=25"
+            f"&sort=date"
+            f"&fileConditions=xfilter%28date+%22{sdate[0]}%2F{sdate[1]}%2F{sdate[2]}~~{edate[0]}%2F{edate[1]}%2F{edate[2]}%22%29"
+            f"&booleanConditions="
+        )
         self.parse()
         return 0
 
     def pagination(self):
         data = tostring(self.html).decode('utf-8')
         soup = BeautifulSoup(data, 'html.parser')
-        tables = soup.find_all('table')
-        last_table = tables[-1]
-        td_tags = last_table.find_next('tr').find_all_next('td')
-        a_tag = td_tags[1].find_next('a')
-        if a_tag is None:
+
+        # ---- Extract pagination info ----
+        header = soup.find('p', class_='NextPrevLinks')
+        if not header:
             return None
-        if a_tag.attrs.__contains__('disabled'):
+
+        import re
+        match = re.search(r'Results\s+(\d+)\s*-\s*(\d+)\s+of\s+(\d+)',
+                          header.text)
+        if not match:
             return None
-        else:
-            page_link = a_tag.attrs.get('href')
-            if page_link.__contains__('https://ww3.ca2.uscourts.gov/') or page_link.__contains__('http://ww3.ca2.uscourts.gov/') or page_link.__contains__('http://www.ca2.uscourts.gov/'):
-                return page_link
-            else:
-                page_link = "https://ww3.ca2.uscourts.gov/" + page_link
-                return page_link
+
+        first = int(match.group(1))
+        last = int(match.group(2))
+        total = int(match.group(3))
+
+        # ---- 🔴 DECISION POINT ----
+        if last >= total:
+            return None  # ✅ NO MORE PAGES
+
+        # ---- MULTIPLE PAGES EXIST ----
+        form = soup.find('form', {'name': 'NextPageForm'})
+        if not form:
+            return None
+
+        inputs = form.find_all('input')
+        form_data = {}
+
+        for inp in inputs:
+            name = inp.get('name')
+            value = inp.get('value', '')
+            if name:
+                form_data[name] = value
+
+        # ---- Compute next page ----
+        current_start = int(form_data.get('startAt', 0))
+        page_size = int(form_data.get('pageSize', 25))
+
+        next_start = current_start + page_size
+
+        # ---- Safety check ----
+        if next_start >= total:
+            return None
+
+        form_data['startAt'] = str(next_start)
+
+        # ---- Update scraper state ----
+        self.method = 'POST'
+        self.url = form.get(
+            'action') or "https://ww3.ca2.uscourts.gov/dtSearch/dtisapi6.dll"
+        self.parameters = form_data
+
+        return self.url
 
     def parse(self):
         if not self.downloader_executed:
@@ -113,49 +188,82 @@ class Site(OpinionSite):
                 if next_page_link is None:
                     flag = False
                 else:
-                    self.method = 'GET'
+                    self.method = 'POST'
                     self.url = next_page_link
 
-                # names
-                text_nodes = self.html.xpath("//table/td[2]/text()")
-                for text in text_nodes:
-                    self.names.append(titlecase(text))
+                # Parse rows properly
+                rows = self.html.xpath('//table[@class="ResultsTable"]/tr')
 
-                # dates
-                date_nodes = self.html.xpath("//table/td[3]/text()")
-                for dt in date_nodes:
-
-                    date_filed = date.fromtimestamp(time.mktime(time.strptime(dt, "%m-%d-%Y")))
-                    date_obj = date_filed.strftime('%d/%m/%Y')
-                    self.dates.append(date_filed)
-                    res = CasemineUtil.compare_date(self.crawled_till, date_obj)
-                    if res == 1:
-                        self.crawled_till = date_obj
-                        flag=False
-
-                # docket_numbers
-                docket_node = self.html.xpath("//table/td/b/a/nobr")
-                for doc in docket_node:
-                    cus_doc = str(doc.text_content()).split(",")
-                    self.dockets.append(cus_doc)
-
-                url_node = self.html.xpath("//table/td/b/a/@href")
-                for url in url_node:
-                    # print(url)
-                    if not str(url).startswith("http"):
-                        url = "https://ww3.ca2.uscourts.gov/" + url
-                        self.urls.append(url)
+                for row in rows:
+                    # ---- DOCKET ----
+                    docket = row.xpath(
+                        './/td[@class="ResultsItemLeft"]//a/text()')
+                    if docket:
+                        self.dockets.append([docket[0].strip()])
                     else:
-                        self.urls.append(url)
+                        self.dockets.append([])
 
-                # status
-                for s in self.html.xpath("//table/td[4]/text()"):
-                    if "opn" in s.lower():
-                        self.statuses.append("Published")
-                    elif "sum" in s.lower():
-                        self.statuses.append("Unpublished")
+                    # ---- URL ----
+                    url = row.xpath('.//td[@class="ResultsItemLeft"]//a/@href')
+                    if url:
+                        link = url[0]
+                        if not link.startswith("http"):
+                            link = "https://ww3.ca2.uscourts.gov/" + link
+                        self.urls.append(link)
                     else:
-                        self.statuses.append("Unknown")
+                        self.urls.append(None)
+
+                    # ---- CASE NAME ----
+                    name = row.xpath(
+                        './/td[@class="ResultsItemRight"]//a/text()')
+                    if name:
+                        self.names.append(titlecase(name[0].strip()))
+                    else:
+                        self.names.append("")
+
+                    # ---- DATE ----
+                    date_texts = row.xpath(
+                        './/td[@class="ResultsItemRight"]/text()')
+
+                    extracted_date = None
+                    for txt in date_texts:
+                        txt = txt.strip()
+                        if "/" in txt:
+                            extracted_date = txt
+                            break
+
+                    if extracted_date:
+                        try:
+                            date_filed = datetime.strptime(extracted_date,
+                                                           "%m/%d/%Y").date()
+                            self.dates.append(date_filed)
+
+                            date_obj = date_filed.strftime('%d/%m/%Y')
+                            res = CasemineUtil.compare_date(self.crawled_till,
+                                                            date_obj)
+                            if res == 1:
+                                self.crawled_till = date_obj
+                                flag = False
+                        except:
+                            self.dates.append(None)
+                    else:
+                        self.dates.append(None)
+
+                    # ---- STATUS ----
+                    type_text = row.xpath(
+                        './/td[@class="ResultsItemRight"]/text()')
+
+                    status_val = "Unknown"
+                    for t in type_text:
+                        t = t.lower()
+                        if "opn" in t:
+                            status_val = "Published"
+                            break
+                        elif "sum" in t:
+                            status_val = "Unpublished"
+                            break
+
+                    self.statuses.append(status_val)
                 # Process the available html (optional)
 
         # Set the attribute to the return value from _get_foo()
