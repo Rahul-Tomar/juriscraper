@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from urllib.parse import urljoin
 
@@ -24,6 +25,14 @@ class Site(ny_new.Site):
             if text.startswith("Cases Decided"):
                 # Extract date part (after "Cases Decided")
                 current_date = text.replace("Cases Decided", "").strip()
+                if re.search(r'\d+(st|nd|rd|th)', current_date):
+                    # remove suffix
+                    current_date = re.sub(r'(\d+)(st|nd|rd|th)', r'\1',
+                                          current_date)
+
+                    # append current year
+                    current_year = datetime.now().year
+                    current_date = f"{current_date}, {current_year}"
                 continue
             # If it's a case row (must have 4 <td>)
             if elem.tag == "tr":

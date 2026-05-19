@@ -2,7 +2,10 @@ from datetime import datetime
 import os
 import re
 from urllib.parse import urljoin
-
+import shutil
+import fitz  # PyMuPDF
+import requests
+from PyPDF2 import PdfReader
 from bs4 import BeautifulSoup
 import cloudscraper
 import pdfkit
@@ -144,6 +147,223 @@ class Site(OpinionSiteLinear):
                 object_id = dup.get("_id")
         return object_id
 
+    def is_pdf_valid(self,file_path):
+        """Return True if PDF exists, readable, and not an HTML/error page."""
+
+        if not os.path.isfile(file_path):
+            return False, "PDF does not exist"
+
+        if os.path.getsize(file_path) < 1000:
+            return False, "PDF is too small or empty"
+
+        try:
+            # Detect fake PDF / HTML response
+            with open(file_path, "rb") as f:
+                first_bytes = f.read(5000)
+
+            # PDF must start with %PDF
+            if not first_bytes.startswith(b"%PDF"):
+                text = first_bytes.decode(errors="ignore").lower()
+
+                if "404 error" in text or "file not found" in text:
+                    return False, "Downloaded file is a 404 HTML page"
+
+                if "<html" in text or "<!doctype html" in text:
+                    return False, "Downloaded file is HTML instead of PDF"
+
+                return False, "Invalid PDF format"
+
+            # Validate PDF structure
+            reader = PdfReader(file_path)
+
+            if len(reader.pages) == 0:
+                return False, "PDF has no pages"
+
+            return True, "PDF is valid and readable"
+
+        except Exception as e:
+            return False, f"PDF is corrupted or unreadable: {e}"
+
+    def download_again(self,url,download_pdf_path,obj_id):
+        try:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(download_pdf_path), exist_ok=True)
+
+            headers = {
+                # "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            }
+
+            #  Fetch HTML
+            response = requests.get(url, headers=headers, proxies=self.proxies,
+                                    timeout=30)
+            response.raise_for_status()
+
+            html = response.text
+
+            #  Detect invalid / 404 HTML before processing
+            invalid_patterns = [
+                "404 ERROR - File Not Found",
+                "Sorry, but the page you requested cannot be found",
+                "<title>404 ERROR",
+            ]
+
+            if any(
+                pattern.lower() in html.lower() for pattern in
+                invalid_patterns):
+                print("❌ Invalid response / 404 page detected")
+                return False
+
+            content_type = response.headers.get("Content-Type", "").lower()
+
+            # ✅ Real PDF
+            if "application/pdf" in content_type or response.content.startswith(
+                b"%PDF"):
+                with open(download_pdf_path, "wb") as f:
+                    f.write(response.content)
+
+                # print("✅ Direct PDF downloaded")
+                return True
+
+            html = response.text.encode('utf-8', 'ignore').decode('utf-8')
+
+            #  Parse HTML
+            soup = BeautifulSoup(html, "lxml")
+
+            #  Fix relative URLs
+            for tag in soup.find_all('link', href=True):
+                tag['href'] = urljoin(url, tag['href'])
+
+            for tag in soup.find_all('img', src=True):
+                tag['src'] = urljoin(url, tag['src'])
+
+            # Add base tag
+            if soup.head:
+                base_tag = soup.new_tag("base", href=url)
+                soup.head.insert(0, base_tag)
+
+            #  Remove unwanted UI
+            unwanted_classes = ["header", "footer-container", "skipcontent",
+                                "ab-banner"]
+            for cls in unwanted_classes:
+                for tag in soup.find_all(class_=cls):
+                    tag.decompose()
+
+            #  Remove problematic scripts
+            for script in soup.find_all("script"):
+                src = script.get("src", "")
+                if "cloudflare" in src or "cdn-cgi" in src:
+                    script.decompose()
+
+            #  Remove iframe
+            for iframe in soup.find_all("iframe"):
+                iframe.decompose()
+
+            for a in soup.find_all("a"):
+                a.unwrap()  # keeps inner text, removes <a> tag
+
+            #  Remove FORM elements completely
+            for form in soup.find_all("form"):
+                form.decompose()
+
+            #  Remove INPUT buttons (like "Return to Decision List")
+            for inp in soup.find_all("input"):
+                inp.decompose()
+
+            for div in soup.find_all("div"):
+                disclaimer = div.find("p", class_="disclaimer")
+                if disclaimer:
+                    div.decompose()
+
+            options = {
+                'enable-local-file-access': None,
+                'load-error-handling': 'ignore',
+                'load-media-error-handling': 'ignore',
+                'javascript-delay': 2000,
+                'no-stop-slow-scripts': None,
+
+                # Important for colors/backgrounds
+                'print-media-type': None,
+                'background': None,
+                'images': None,
+
+                # Better quality
+                'dpi': 300,
+                'image-quality': 100,
+                'encoding': 'UTF-8',
+            }
+
+            # wkhtmltopdf config (ensure installed)
+            config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
+
+            pdfkit.from_string(str(soup), download_pdf_path, options=options,
+                               configuration=config)
+
+            # print(f"✅ PDF saved at: {download_pdf_path}")
+            return True
+
+        except Exception as e:
+            print(f"❌ Error downloading {url}: {e}")
+            return False
+
+    def cleaned_pdf(self, input_file: str) -> str:
+        """
+        Remove only hyperlink annotations whose URI starts with:
+        https://www.nycourts.gov/reporter/
+
+        If no matching link is found, the PDF is not modified.
+        """
+
+        if input_file is None or not os.path.isfile(input_file):
+            raise FileNotFoundError(f"PDF file does not exist: {input_file}")
+
+        target_url_prefix = "https://www.nycourts.gov/reporter/"
+
+        temp_folder = "/home/gaugedata/Documents/Juriscraper Test/"
+        os.makedirs(temp_folder, exist_ok=True)
+
+        temp_output_file = os.path.join(
+            temp_folder,
+            os.path.basename(input_file)
+        )
+
+        removed_links = 0
+
+        doc = fitz.open(input_file)
+
+        try:
+            for page in doc:
+                links = page.get_links()
+
+                for link in links:
+                    url = link.get("uri")
+
+                    if url and url.startswith(target_url_prefix):
+                        page.delete_link(link)
+                        removed_links += 1
+
+            # Checkpoint: if no matching link found, do not save/overwrite
+            if removed_links == 0:
+                # print("No nycourts reporter link found. PDF not modified.")
+                return input_file
+
+            doc.save(
+                temp_output_file,
+                garbage=4,
+                deflate=True,
+                clean=True
+            )
+
+        finally:
+            doc.close()
+
+        shutil.move(temp_output_file, input_file)
+
+        print(f"Removed nycourts reporter links: {removed_links}")
+
+        return input_file
+
     @override
     def download_pdf(self, data, objectId):
         pdf_url = str(data.__getitem__('pdf_url'))
@@ -163,14 +383,10 @@ class Site(OpinionSiteLinear):
         os.makedirs(path, exist_ok=True)
         update_query={}
         try:
-            proxies = {
-                # 'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',
-                "http": "http://23.236.154.202:8800",
-                "https": "http://23.236.154.202:8800"
-                }
+
             scraper = cloudscraper.create_scraper()  # This handles Cloudflare challenges
-            response = scraper.get(pdf_url, proxies=proxies)
-            if pdf_url.endswith('.html') or pdf_url.endswith('.htm'):
+            response = scraper.get(pdf_url, proxies=self.proxies)
+            if pdf_url.endswith('.html') or pdf_url.endswith('.htm') :
                 # if pdf url contains html then refine it and convert html to pdf and also save modified html
                 soup = BeautifulSoup(response.text, 'html.parser')
                 # print(soup.text)
@@ -196,7 +412,23 @@ class Site(OpinionSiteLinear):
                     file.write(response.content)
             else:
                 with open(download_pdf_path, 'wb') as file:
+                    # print(response.content)
                     file.write(response.content)
+
+            is_valid, message = self.is_pdf_valid(download_pdf_path)
+            if not is_valid:
+                flag = self.download_again(pdf_url, download_pdf_path, obj_id)
+                if flag:
+                    self.cleaned_pdf(download_pdf_path)
+                    update_query.__setitem__("processed", 0)
+                    self.judgements_collection.update_one({"_id": objectId}, {
+                        "$set": update_query})
+                    return download_pdf_path
+                else:
+                    update_query.__setitem__("processed", 2)
+                    self.judgements_collection.update_one(
+                        {"_id": objectId}, {"$set": update_query})
+                    return download_pdf_path
 
             # if pdf has been downloaded successfully mark processed as 0 and update the record
             update_query.__setitem__("processed", 0)

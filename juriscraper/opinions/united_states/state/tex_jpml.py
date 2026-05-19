@@ -57,6 +57,12 @@ class Site(OpinionSiteLinear):
             name = style_td.text.strip()
             date_filed = date_td.text.strip()
             date = datetime.strptime(date_filed, "%m/%d/%Y").strftime("%d/%m/%Y")
+            parsed_date = datetime.strptime(date_filed, "%m/%d/%Y")
+            if isinstance(self.crawled_till, str):
+                crawled_till_parsed = datetime.strptime(self.crawled_till,
+                                                      "%d/%m/%Y")
+            if parsed_date < crawled_till_parsed:
+                break
             response = requests.get(url=case_url,headers=self.headers_case,proxies=self.proxies)
             if(response.status_code==200):
                 soup = BeautifulSoup(response.content,"html.parser")
@@ -88,6 +94,8 @@ class Site(OpinionSiteLinear):
                             if not href.startswith("https"):
                                 href = "https://search.txcourts.gov/"+href
                                 # print(href)
+                            if not case_number:
+                                raise Exception("Docket Number is null :")
                             self.cases.append({
                                 "date": date,
                                 "name": name,
@@ -96,7 +104,7 @@ class Site(OpinionSiteLinear):
                                 "docket": case_number,
                                 "status":self.status
                             })
-                            break
+
             print({
                 "case_number": case_number,
                 "style": name,

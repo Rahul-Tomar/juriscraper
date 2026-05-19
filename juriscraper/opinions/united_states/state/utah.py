@@ -16,7 +16,11 @@ class Site(OpinionSiteLinear):
     def _process_html(self):
         for row in self.html.xpath("/html/body//div[@class='w-75 pb-4']/p"):
             docket , date , citation= None, None, None
-            name=row.xpath("./a/text()")[0]
+            name=row.xpath("./a/text()")
+            if name :
+                name = row.xpath("./a/text()")[0]
+            else :
+                continue
             if name == "Back to Appellate Court Opinions":
                 continue
             text = row.xpath("./text()")[0]
@@ -33,10 +37,10 @@ class Site(OpinionSiteLinear):
 
             url = row.xpath(".//a/@href")[0]
             pdf_url = quote(url, safe="/:")
-            if not pdf_url.startswith("https://legacy.utcourts.gov/opinions/appopin/"):
+            if not pdf_url.startswith(("http://", "https://")):
                 pdf_url = "https://legacy.utcourts.gov/opinions/appopin/" + pdf_url.lstrip("/")
             dt = datetime.strptime(date, "Filed %B %d, %Y")
-
+            # print(name)
             self.cases.append(
                 {
                     "date": str(dt),

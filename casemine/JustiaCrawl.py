@@ -1,3 +1,5 @@
+import random
+
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
@@ -11,43 +13,41 @@ import traceback
 from jurisdiction_codes import get_juris_code
 from jurisdiction_codes import code_list
 from jurisdiction_codes import level
+from curl_cffi import requests
+
 PROXIES = [
+    {"server": "http://156.241.216.194:8800"},
+    {"server": "http://156.241.221.92:8800"},
+    {"server": "http://23.236.154.202:8800"},
+    {"server": "http://23.236.154.249:8800"},
+    {"server": "http://23.236.197.155:8800"},
+    {"server": "http://156.241.216.194:8800"},
+    {"server": "http://156.241.221.92:8800"},
+    {"server": "http://23.236.154.202:8800"},
+    {"server": "http://23.236.154.249:8800"},
+    {"server": "http://23.236.197.155:8800"},
+    {"server": "http://23.236.197.227:8800"},
+    {"server": "http://23.236.197.153:8800"},
+    {"server": "http://46.175.152.42:8800"},
+    {"server": "http://156.241.216.194:8800"},
+    {"server": "http://156.241.221.92:8800"},
+    {"server": "http://23.236.154.202:8800"},
+    {"server": "http://23.236.154.249:8800"},
+    {"server": "http://23.236.197.155:8800"},
     {"server": "http://23.236.154.202:8800"},
     {"server": "http://46.175.155.214:8800"},
     {"server": "http://23.236.154.249:8800"},
     {"server": "http://46.175.154.158:8800"},
     {"server": "http://23.236.197.155:8800"},
-    {"server": "http://46.175.153.178:8800"},
     {"server": "http://23.236.197.227:8800"},
-    {"server": "http://46.175.155.243:8800"},
     {"server": "http://23.236.197.153:8800"},
-    {"server": "http://46.175.153.189:8800"},
-    {"server": "http://156.241.221.148:8800"},
-    {"server": "http://46.175.155.7:8800"},
-    {"server": "http://156.241.216.136:8800"},
     {"server": "http://46.175.152.42:8800"},
-    {"server": "http://156.241.216.8:8800"},
-    {"server": "http://46.175.152.135:8800"},
     {"server": "http://156.241.216.194:8800"},
-    {"server": "http://46.175.154.99:8800"},
     {"server": "http://156.241.221.92:8800"},
-    {"server": "http://46.175.154.19:8800"},
+    {"server": "http://23.236.154.202:8800"},
+    {"server": "http://23.236.154.249:8800"},
+    {"server": "http://23.236.197.155:8800"}
 
-    {"server": "http://46.175.155.187:8800"},
-    {"server": "http://46.175.153.40:8800"},
-    {"server": "http://46.175.155.160:8800"},
-    {"server": "http://46.175.155.176:8800"},
-    {"server": "http://46.175.154.236:8800"},
-    {"server": "http://46.175.153.42:8800"},
-    {"server": "http://46.175.154.76:8800"},
-    {"server": "http://46.175.152.11:8800"},
-    {"server": "http://46.175.152.149:8800"},
-    {"server": "http://46.175.154.58:8800"},
-    {"server": "http://46.175.153.230:8800"},
-    {"server": "http://46.175.155.38:8800"},
-    {"server": "http://46.175.152.96:8800"},
-    {"server": "http://46.175.152.131:8800"},
-    {"server": "http://46.175.153.62:8800"}
 ]
 
 proxy_index = 0
@@ -69,32 +69,68 @@ counter = 0
 def get_page_html(url):
     global proxy_index
 
-    for attempt in range(20):
+    for attempt in range(30):
+
+        proxy = PROXIES[proxy_index]
+        proxy_index = (proxy_index + 1) % len(PROXIES)
+
+        proxy_server = proxy["server"]
+
+        print(f"\n[CURL] Attempt {attempt + 1}/30")
+        print(f"[CURL] Using Proxy: {proxy_server}")
+
         try:
-            with sync_playwright() as p:
-                proxy = PROXIES[proxy_index]
-                proxy_index = (proxy_index + 1) % len(PROXIES)
+            response = requests.get(
+                url,
+                proxy=proxy_server,
+                timeout=60,
+                impersonate="chrome124",
+                verify=False,
+                allow_redirects=True,
+            )
 
-                print(f"\n Using Proxy: {proxy['server']}")
+            print(f"[CURL] Status: {response.status_code}")
 
-                browser = p.firefox.launch(headless=True, proxy=proxy)
-                context = browser.new_context()
-                page = context.new_page()
+            if response.status_code != 200:
+                print(f"[CURL] Bad status: {response.status_code}")
+                time.sleep(random.uniform(10, 20))
+                continue
 
-                page.goto(url, timeout=60000)
-                page.wait_for_load_state("networkidle")
+            html = response.text
 
-                html = page.content()
+            if not html or len(html.strip()) < 500:
+                print("[CURL] Empty/small HTML. Retrying with next proxy...")
+                time.sleep(random.uniform(2, 5))
+                continue
 
-                browser.close()
-                return html
+            if is_fake_or_blocked_page(html):
+                print("[CURL] Fake/blocked page detected. Retrying with next proxy...")
+                time.sleep(random.uniform(2, 5))
+                continue
 
-        except:
-            print("❌ Proxy failed, retrying with next proxy...")
+            print("[CURL] Page fetched successfully")
+            return html
+
+        except Exception as e:
+            print(f"[CURL] Proxy failed: {proxy_server}")
+            print("Error:", str(e))
+            traceback.print_exc()
+            time.sleep(random.uniform(10, 20))
             continue
 
     return None
 
+def is_fake_or_blocked_page(html):
+    if not html:
+        return True
+
+    text = html.lower()
+
+    cloudflare_markers = [
+        "just a moment",
+    ]
+
+    return any(marker in text for marker in cloudflare_markers)
 
 def get_next_proxy():
     global proxy_index
@@ -113,22 +149,22 @@ def download_pdf(pdf_url, case_id, year, court, court_type):
     filepath = f"{base_dir}{case_id}.pdf"
     duplicate_filter = {"_id": case_id}
 
-    for attempt in range(10):   # retry 10 times with new proxy
+    for attempt in range(20):   # retry 10 times with new proxy
         proxy_server = get_next_proxy()
-
         proxies = {
             "http": proxy_server,
-            "https": proxy_server
+            "https": proxy_server,
         }
-
         print(f"[PDF] Attempt {attempt+1} using proxy: {proxy_server}")
 
         try:
             r = requests.get(
                 pdf_url,
-                timeout=30,
+                proxies=proxies,
+                timeout=90,
                 stream=True,
-                proxies=proxies
+                verify=False,
+                allow_redirects=True,
             )
 
             if r.status_code == 200:
@@ -150,6 +186,7 @@ def download_pdf(pdf_url, case_id, year, court, court_type):
         except Exception as e:
             print(f"❌ Proxy failed: {proxy_server}")
             print("Error:", str(e))
+            time.sleep(random.uniform(8, 20))
 
     # If all proxies fail
     collection.update_one(
@@ -264,7 +301,7 @@ def crawl_court(court, court_url, crawled_till, court_type):
                     pdf_url = None
                     raise Exception("Pdf is Null")
             except:
-                continue
+                raise Exception("Pdf is Null")
 
             # Dockets
             # print(block)

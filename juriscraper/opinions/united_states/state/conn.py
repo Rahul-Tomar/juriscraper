@@ -3,6 +3,8 @@ from datetime import date, datetime
 from typing import Tuple
 from playwright.sync_api import sync_playwright
 from dateutil.parser import parse
+from curl_cffi import requests
+from lxml import html
 from urllib.parse import urlparse
 from casemine.casemine_util import CasemineUtil
 from juriscraper.AbstractSite import logger
@@ -10,8 +12,6 @@ from juriscraper.lib.string_utils import clean_string
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 import os
 import re
-import time
-import requests
 
 class Site(OpinionSiteLinear):
     court_abbv = "sup"
@@ -182,7 +182,7 @@ class Site(OpinionSiteLinear):
 
         if start_year == end_year:
             logger.info("Backscraping for year %s", start_year)
-            self.url = self.make_url(start_year)
+            # self.url = self.make_url(start_year)
             self.html = self._download()
             self._process_html()
         else:
@@ -206,12 +206,7 @@ class Site(OpinionSiteLinear):
         - proxy
         - custom headers + cookies
         """
-
-        import cloudscraper
-        from lxml import html
-
-        # ---- PROXY ----
-        # proxy = "http://23.236.154.202:8800"
+        print(self.url)
         US_PROXIES = [
             ("23.236.154.202", 8800),
             ("23.236.154.249", 8800),
@@ -225,47 +220,46 @@ class Site(OpinionSiteLinear):
             ("156.241.221.92", 8800),
         ]
 
-        # ---- HEADERS ----
-        headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-        }
-
-        scraper = cloudscraper.create_scraper()
-
         for ip, port in US_PROXIES:
             proxy_url = f"http://{ip}:{port}"
-            proxies = {
-                "http": proxy_url,
-                "https": proxy_url
-            }
 
             logger.info(f"Trying proxy: {proxy_url}")
-            timeout = 30
+
             try:
-                resp = scraper.get(
+                resp = requests.get(
                     self.url,
-                    # headers=headers,
-                    proxies=proxies,
-                    timeout=timeout
+                    proxy=proxy_url,
+                    timeout=60,
+                    impersonate="chrome124",
+                    verify=False,
+                    allow_redirects=True,
                 )
+
+                logger.info(
+                    f"Status {resp.status_code} with proxy {proxy_url}")
 
                 if resp.status_code == 200:
-                    logger.info(f"✅ Success with proxy {proxy_url}")
-                    return html.fromstring(resp.text)
+                    text = resp.text
 
-                logger.warning(
-                    f"❌ Status {resp.status_code} with proxy {proxy_url}"
-                )
+                    if not text or len(text.strip()) < 500:
+                        logger.warning(
+                            f"Empty/small response with proxy {proxy_url}")
+                    else:
+                        logger.info(f"✅ Success with proxy {proxy_url}")
+                        return html.fromstring(text)
+
+                else:
+                    logger.warning(
+                        f"❌ Status {resp.status_code} with proxy {proxy_url}"
+                    )
 
             except Exception as e:
                 logger.error(f"❌ Proxy failed {proxy_url}: {e}")
 
             logger.info("⏳ Sleeping 30 seconds before next proxy...")
-            time.sleep(60)
+            # time.sleep(30)
 
         raise Exception("All proxies exhausted, no 200 response received")
-
         # Return parsed HTML tree exactly as Juriscraper expects
 
     def download_pdf(self, data, objectId):

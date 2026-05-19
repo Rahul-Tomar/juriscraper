@@ -18,6 +18,7 @@ class Site(conn.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
+        self.url = "https://www.jud.ct.gov/external/supapp/archiveAROap26.htm"
 
     def get_court_name(self):
         return "Appellate Court of Connecticut"
