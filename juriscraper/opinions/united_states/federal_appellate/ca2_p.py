@@ -214,12 +214,31 @@ class Site(OpinionSite):
                         self.urls.append(None)
 
                     # ---- CASE NAME ----
-                    name = row.xpath(
+                    case_name = ""
+
+                    # Try anchor text first
+                    anchors = row.xpath(
                         './/td[@class="ResultsItemRight"]//a/text()')
-                    if name:
-                        self.names.append(titlecase(name[0].strip()))
-                    else:
-                        self.names.append("")
+
+                    for a in anchors:
+                        a = a.strip()
+                        if a:
+                            case_name = a
+                            break
+
+                    # Fallback to JS variable captionStr
+                    if not case_name:
+                        scripts = row.xpath('.//script/text()')
+
+                        import re
+                        for script in scripts:
+                            m = re.search(r'var captionStr\s*=\s*"(.*?)";',
+                                          script, re.S)
+                            if m:
+                                case_name = m.group(1).strip()
+                                break
+
+                    self.names.append(titlecase(case_name))
 
                     # ---- DATE ----
                     date_texts = row.xpath(
