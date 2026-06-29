@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from urllib.parse import urljoin
 
@@ -24,6 +25,15 @@ class Site(ny_new.Site):
             if text.startswith("Cases Decided"):
                 # Extract date part (after "Cases Decided")
                 current_date = text.replace("Cases Decided", "").strip()
+                if not re.search(r"\b\d{4}\b", current_date):
+                    current_date = re.sub(
+                        r"(\d{1,2})(st|nd|rd|th)\b",
+                        r"\1",
+                        current_date,
+                        flags=re.IGNORECASE
+                    )
+                    year = datetime.now().year
+                    current_date = f"{current_date}, {year}"
                 continue
             # If it's a case row (must have 4 <td>)
             if elem.tag == "tr":
@@ -50,7 +60,7 @@ class Site(ny_new.Site):
                 if not str(judge).__eq__(""):
                     jud_ar = [judge]
                 self.cases.append({
-                    "name": title, "date": current_date, "status": "Unknown", "url": url, "parallel_citation": [self.to_mongo_format(slip_op)], "judge": jud_ar,"docket":[]
+                    "name": title, "date": current_date, "status": "Unknown", "url": url, "parallel_citation": [self.to_mongo_format(slip_op)], "judge": jud_ar,"docket":[docket]
                 })
                 # print(f"{i} - {current_date} || {title} || {docket} || {slip_op} || {judge}")
             i+=1

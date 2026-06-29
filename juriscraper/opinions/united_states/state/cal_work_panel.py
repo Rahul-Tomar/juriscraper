@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import requests
 from lxml import html
 
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear

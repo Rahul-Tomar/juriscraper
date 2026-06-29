@@ -15,41 +15,14 @@ collection = db[MAIN_COLLECTION]
 
 
 def is_pdf_valid(file_path):
-    """Return True if PDF exists, readable, and not an HTML/error page."""
-
-    if not os.path.isfile(file_path):
-        return False, "PDF does not exist"
-
-    if os.path.getsize(file_path) < 1000:
-        return False, "PDF is too small or empty"
-
     try:
-        # Detect fake PDF / HTML response
         with open(file_path, "rb") as f:
-            first_bytes = f.read(5000)
+            PdfReader(f)
 
-        # PDF must start with %PDF
-        if not first_bytes.startswith(b"%PDF"):
-            text = first_bytes.decode(errors="ignore").lower()
-
-            if "404 error" in text or "file not found" in text:
-                return False, "Downloaded file is a 404 HTML page"
-
-            if "<html" in text or "<!doctype html" in text:
-                return False, "Downloaded file is HTML instead of PDF"
-
-            return False, "Invalid PDF format"
-
-        # Validate PDF structure
-        reader = PdfReader(file_path)
-
-        if len(reader.pages) == 0:
-            return False, "PDF has no pages"
-
-        return True, "PDF is valid and readable"
+        return True, "FILE IS OKAY"
 
     except Exception as e:
-        return False, f"PDF is corrupted or unreadable: {e}"
+        return False, str(e)
 
 
 def convert_url(old_url):
@@ -67,8 +40,10 @@ def convert_url(old_url):
 query = {
     "processed": 2,
     "court_type": "state",
-    "court_name": "California Court of Appeals",
-    "date": {"$gt": datetime(2025, 3, 20)}
+    "year":2026,
+    "court_name": "California Court of Appeals"
+    # "date": {"$gt": datetime(2025, 3, 20)}
+
 }
 
 # query = {'class_name':"ny","response_html":{"$regex":"This site can’t be reached"}}
@@ -118,17 +93,20 @@ for doc in crawl_cursor:
                     "http": "http://23.236.154.202:8800", "https": "http://23.236.154.202:8800"
                 }
                                 )
+        if response.status_code==200:
+            with open(download_pdf_path, 'wb') as file:
+                file.write(response.content)
+                status, message = is_pdf_valid(download_pdf_path)
+                if status:
+                    update_query.__setitem__("processed", 0)
+                    update_query.__setitem__("pdf_url", pdf_url)
+                    collection.update_one({'_id': objectId},
+                                          {'$set': update_query})
+                    print(f"{i} - {obj_id} updated")
 
 
         # response.raise_for_status()
-        with open(download_pdf_path, 'wb') as file:
-            file.write(response.content)
-            status, message = is_pdf_valid(download_pdf_path)
-            if status:
-                update_query.__setitem__("processed", 0)
-                update_query.__setitem__("pdf_url",pdf_url)
-                collection.update_one({'_id':objectId},{'$set':update_query})
-                print(f"{i} - {obj_id} updated")
+
         i = i + 1
     except Exception as e:
         print(f"{i} - Error while downloading the PDF: {e} for {objectId} , {court_name}")

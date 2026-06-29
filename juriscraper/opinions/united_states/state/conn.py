@@ -24,7 +24,8 @@ class Site(OpinionSiteLinear):
         self.status = "Published"
 
         self.current_year = int(date.today().strftime("%Y"))
-        self.url = self.make_url(self.current_year)
+        # self.url = self.make_url(self.current_year)
+        self.url ="https://www.jud.ct.gov/external/supapp/archiveAROsup26.htm"
         self.make_backscrape_iterable(kwargs)
 
         self.cipher = "AES256-SHA256"
@@ -208,6 +209,7 @@ class Site(OpinionSiteLinear):
         """
         print(self.url)
         US_PROXIES = [
+            ("192.186.171.91", 8800),
             ("23.236.154.202", 8800),
             ("23.236.154.249", 8800),
             ("23.236.197.155", 8800),

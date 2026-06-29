@@ -47,7 +47,7 @@ class Site(OpinionSiteLinear):
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
-                proxy={"server": "http://23.236.154.202:8800"}
+                proxy={"server": "http://156.241.216.136:8800"}
             )
 
             context = browser.new_context(

@@ -1,5 +1,6 @@
 from datetime import datetime
 import requests
+from pytest_metadata import ci
 
 from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
@@ -30,7 +31,10 @@ class Site(OpinionSiteLinear):
         response = requests.get(url=self.url, headers=self.headers, proxies=self.proxies)
         # print(response.status_code)
         BASE_URL = "https://www.coloradojudicial.gov"
-        CASE_RE = re.compile(r"\d{2}\s*\d{2}\s*CO")
+        CASE_RE = re.compile(
+            r"\b\d{4}\s*CO\s*\d+\b|\b\d{4}SC\d+\b",
+            re.I
+        )
         soup = BeautifulSoup(response.text, "html.parser")
         article = soup.find("article", attrs={"data-history-node-id": "13564"})
         if not article:
@@ -92,6 +96,13 @@ class Site(OpinionSiteLinear):
                     citation_number = re.sub(r"(\d{2})\s+(\d{2})\s*(CO)",
                                          r"\1\2 \3",
                                          citation_number)
+
+                    # Convert "26 CO 33" -> "2026 CO 33"
+                    citation_number = re.sub(
+                        r"^(\d{2})\s+CO\s+(\d+[A-Z]?)$",
+                        r"20\1 CO \2",
+                        citation_number
+                    )
 
                     # HARD FILTER: real cases only
                     if not CASE_RE.search(citation_number):

@@ -19,6 +19,7 @@ class Site(nyappdiv_2nd_new.Site):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.court_type = "aidxtable_4"
+        self.BASE_URL = "https://www.nycourts.gov/reporter/current/index/"
         self.CURRENT_URL = self.BASE_URL + f"{self.court_type}.shtml"
         print("-> ",self.CURRENT_URL)
 

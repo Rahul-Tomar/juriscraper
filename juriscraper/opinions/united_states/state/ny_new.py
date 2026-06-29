@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 import re
 from urllib.parse import urljoin
+import html as html_lib
 import shutil
 import fitz  # PyMuPDF
 import requests
@@ -12,6 +13,9 @@ import pdfkit
 from typing_extensions import override
 from casemine.casemine_util import CasemineUtil
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+import pdfkit
 
 class Site(OpinionSiteLinear):
 
@@ -226,22 +230,23 @@ class Site(OpinionSiteLinear):
                 # print("✅ Direct PDF downloaded")
                 return True
 
-            html = response.text.encode('utf-8', 'ignore').decode('utf-8')
+            html = self.prepare_html_for_pdf(response.text)
 
             #  Parse HTML
             soup = BeautifulSoup(html, "lxml")
 
-            #  Fix relative URLs
-            for tag in soup.find_all('link', href=True):
-                tag['href'] = urljoin(url, tag['href'])
-
-            for tag in soup.find_all('img', src=True):
-                tag['src'] = urljoin(url, tag['src'])
-
-            # Add base tag
+            # Force UTF-8 for wkhtmltopdf
             if soup.head:
-                base_tag = soup.new_tag("base", href=url)
-                soup.head.insert(0, base_tag)
+                for old_meta in soup.find_all("meta"):
+                    charset = old_meta.get("charset")
+                    http_equiv = old_meta.get("http-equiv", "")
+
+                    if charset or http_equiv.lower() == "content-type":
+                        old_meta.decompose()
+
+                meta_charset = soup.new_tag("meta")
+                meta_charset.attrs["charset"] = "UTF-8"
+                soup.head.insert(0, meta_charset)
 
             #  Remove unwanted UI
             unwanted_classes = ["header", "footer-container", "skipcontent",
@@ -296,8 +301,8 @@ class Site(OpinionSiteLinear):
 
             # wkhtmltopdf config (ensure installed)
             config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
-
-            pdfkit.from_string(str(soup), download_pdf_path, options=options,
+            final_html = self.prepare_html_for_pdf(str(soup))
+            pdfkit.from_string(final_html, download_pdf_path, options=options,
                                configuration=config)
 
             # print(f"✅ PDF saved at: {download_pdf_path}")
@@ -306,6 +311,79 @@ class Site(OpinionSiteLinear):
         except Exception as e:
             print(f"❌ Error downloading {url}: {e}")
             return False
+
+    def fix_mojibake(self, text):
+        """
+        Fix encoding issues like:
+            CPL Â§30.30 -> CPL §30.30
+        """
+
+        if text is None:
+            return ""
+
+        text = str(text)
+
+        replacements = {
+            "\u00C2\u00A7": "\u00A7",   # Â§ -> §
+            "Â§": "§",
+
+            "\u00C2\u00B6": "\u00B6",   # Â¶ -> ¶
+            "Â¶": "¶",
+
+            "\u00C2\u00A9": "\u00A9",   # Â© -> ©
+            "Â©": "©",
+
+            "\u00C2\u00AE": "\u00AE",   # Â® -> ®
+            "Â®": "®",
+
+            "\u00C2\u00B0": "\u00B0",   # Â° -> °
+            "Â°": "°",
+
+            "\u00C2 ": " ",
+            "Â ": " ",
+
+            "â€”": "—",
+            "â€“": "–",
+            "â€˜": "‘",
+            "â€™": "’",
+            "â€œ": "“",
+            "â€�": "”",
+            "â€¦": "…",
+            "â€¢": "•",
+            "ï»¿": "",
+        }
+
+        for bad, good in replacements.items():
+            text = text.replace(bad, good)
+
+        text = re.sub(r"\u00C2(?=[\u00A7\u00B6\u00A9\u00AE\u00B0])", "", text)
+
+        return text
+
+
+    def prepare_html_for_pdf(self, html_text):
+        """
+        Decode HTML entities before wkhtmltopdf.
+
+        Important:
+            &sect;       -> §
+            &sect;&sect;  -> §§
+            &mdash;      -> —
+            &#151;       -> —
+        """
+
+        if html_text is None:
+            return ""
+
+        html_text = str(html_text)
+
+        # Decode HTML entities like &sect;, &mdash;, &#151;
+        html_text = html_lib.unescape(html_text)
+
+        # Fix already-broken mojibake like Â§
+        html_text = self.fix_mojibake(html_text)
+
+        return html_text
 
     def cleaned_pdf(self, input_file: str) -> str:
         """
@@ -388,7 +466,21 @@ class Site(OpinionSiteLinear):
             response = scraper.get(pdf_url, proxies=self.proxies)
             if pdf_url.endswith('.html') or pdf_url.endswith('.htm') :
                 # if pdf url contains html then refine it and convert html to pdf and also save modified html
-                soup = BeautifulSoup(response.text, 'html.parser')
+                html_text = self.prepare_html_for_pdf(response.text)
+                soup = BeautifulSoup(html_text, 'html.parser')
+
+                # Force UTF-8 for wkhtmltopdf
+                if soup.head:
+                    for old_meta in soup.find_all("meta"):
+                        charset = old_meta.get("charset")
+                        http_equiv = old_meta.get("http-equiv", "")
+
+                        if charset or http_equiv.lower() == "content-type":
+                            old_meta.decompose()
+
+                    meta_charset = soup.new_tag("meta")
+                    meta_charset.attrs["charset"] = "UTF-8"
+                    soup.head.insert(0, meta_charset)
                 # print(soup.text)
                 center_divs = soup.find_all('div', align='center')
                 for div in center_divs:
@@ -404,8 +496,27 @@ class Site(OpinionSiteLinear):
                     if not p.get_text(strip=True):  # Check if the <p> tag is empty or contains only whitespace
                         p.decompose()  # Remove the <p> tag
                 # Print the modified HTML
-                modified_html = soup.prettify()
-                pdfkit.from_string(modified_html, download_pdf_path)
+                modified_html = self.prepare_html_for_pdf(soup.prettify())
+
+                options = {
+                    'encoding': 'UTF-8',
+                    'enable-local-file-access': None,
+                    'load-error-handling': 'ignore',
+                    'load-media-error-handling': 'ignore',
+                    'print-media-type': None,
+                    'background': None,
+                    'images': None,
+                }
+
+                config = pdfkit.configuration(
+                    wkhtmltopdf='/usr/bin/wkhtmltopdf')
+
+                pdfkit.from_string(
+                    modified_html,
+                    download_pdf_path,
+                    options=options,
+                    configuration=config
+                )
                 update_query.__setitem__("response_html", modified_html)
             elif pdf_url.endswith(".pdf"):
                 with open(download_pdf_path, 'wb') as file:

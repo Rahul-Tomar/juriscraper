@@ -9,147 +9,84 @@ History:
  - 2015-10-23, mlr: Updated to handle annoying situation.
  - 2016-02-25 arderyp: Updated to catch "ORDER" (in addition to "Order") in download url text
 """
+import json
 from datetime import datetime
-import \
-    re
+import re
+from xmlrpc.client import DateTime
 
 from lxml import html
-
 from casemine.casemine_util import CasemineUtil
 from juriscraper.lib.string_utils import clean_if_py3, convert_date_string
-from juriscraper.OpinionSite import OpinionSite
+from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 
-class Site(OpinionSite):
-    # Skip first row of table, it's a header
-    path_table_row_start = "//table//tr[position() > 1]"
-    # Skip rows that don't have  link in 4th cell with
-    # either 'Opinion', 'Order', 'ORDER', or 'Amend' in
-    # the link text
-    path_conditional_anchor = (
-        "a["
-        'contains(.//text(), "Opinion") or '
-        'contains(.//text(), "Order") or '
-        'contains(.//text(), "ORDER") or '
-        'contains(.//text(), "Amended")'
-        "]"
-    )
-    path_conditional_row = f"/td[4]//{path_conditional_anchor}"
-    path_base = f"{path_table_row_start}[./{path_conditional_row}]"
-    ctr=0
+class Site(OpinionSiteLinear):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.url = "https://www.isc.idaho.gov/appeals-court/isc_civil"
+        self.court_code = "ISC+Civil"
+        self.court_key = "ISC"
+        self.court_year = datetime.now().year
+        self.url = f"https://isc.idaho.gov/api/cms-content-search?scope=documents&document_type={self.court_key}+Opinion&category={self.court_code}&tag={self.court_year}&sort_by=entry_date&sort_direction=DESC&limit=100"
+        self.case_status  = "Published"
         self.court_id = self.__module__
 
-    def _get_case_names(self):
-        case_names = []
-        path = f"{self.path_base}/td[3]"
-        custom_ctr=0
-        for cell in self.html.xpath(path):
-            if custom_ctr==self.ctr:
-                break
-            name_string = html.tostring(
-                cell, method="text", encoding="unicode"
-            )
-            name_string = clean_if_py3(name_string).strip()
-            if name_string:
-                case_names.append(name_string)
-            custom_ctr+=1
-        return case_names
+    def _process_html(self) :
+        self.cases=[]
+        data = self.html
+        for item in data.get("results", []):
+            if item.get("result_type") == "document":
+                doc_id = item.get("id")
+                self.url = f"https://isc.idaho.gov/api/cms-document?id={doc_id}&locale=en"
+                data = self._download()
+                content = data.get("content", [])
 
-    def _get_download_urls(self):
-        # We'll accept an order document if the opinion document
-        # is missing. But we obviously prefer the opinion doc,
-        # as indicated in the algorithm below. Since each row
-        # can list multiple valid links, we will parse all
-        # acceptable links, take the opinion link if present,
-        # otherwise take the first acceptable link.
-        opinion_urls = []
-        path = f"{self.path_base}/td[4]"
-        path_link = f".//{self.path_conditional_anchor}"
-        custom_ctr = 0
-        for cell in self.html.xpath(path):
-            if custom_ctr==self.ctr:
-                break
-            urls = []
-            url_opinion = False
-            for link in cell.xpath(path_link):
-                text = link.text_content().strip()
-                url = link.attrib["href"].replace("http://", "https://")
-                urls.append(url)
-                if "Opinion" in text:
-                    url_opinion = url
-            opinion_urls.append(url_opinion if url_opinion else urls[0])
-            custom_ctr+=1
-        return opinion_urls
+                for block in content:
+                    if block.get("component_name") == "Opinion":
+                        opinion = block.get("content", {})
 
-    def _get_case_dates(self):
-        case_dates = []
-        path = f"{self.path_base}/td[1]"
+                        title = opinion.get("title", {}).get("value", "")
+                        docket_raw = opinion.get("docket_number", {}).get(
+                            "value", "")
 
-        for cell in self.html.xpath(path):
-            date_string = html.tostring(cell, method="text",
-                                        encoding="unicode")
-            date_string = clean_if_py3(date_string).strip()
+                        if docket_raw is None:
+                            docket_raw = ""
 
-            if date_string:
-                # normalize messy HTML date text
-                date_string = (
-                    date_string.replace(".", "")
-                    .replace("Sept ", "September ")
-                )
+                        docket_raw = str(docket_raw)
 
-                # fix spacing problems
-                date_string = re.sub(r"\s*,\s*", ", ",
-                                     date_string)  # normalize comma spacing
-                date_string = re.sub(r"\s+", " ",
-                                     date_string)  # remove extra spaces
+                        docket_numbers = [
+                            num.strip()
+                            for num in re.split(r",|/|&|;", docket_raw)
+                            if num.strip()
+                        ]
+                        date = opinion.get("release_date", {}).get("value", "")
+                        if not date:
+                            continue
 
-                # remove comma for safe parsing
-                clean_date = date_string.replace(",", "")
+                        date = str(date).strip()
 
-                try:
-                    dt = datetime.strptime(clean_date, "%B %d %Y")
-                except ValueError:
-                    dt = datetime.strptime(clean_date, "%b %d %Y")
+                        try:
+                            datetime.strptime(date, "%B %d, %Y")
+                        except ValueError:
+                            continue
 
-                date_obj = dt.strftime("%d/%m/%Y")
-
-                res = CasemineUtil.compare_date(self.crawled_till, date_obj)
-                if res == 1:
-                    break
-
-                case_dates.append(
-                    convert_date_string(dt.strftime("%B %d, %Y")))
-                self.ctr += 1
-
-        return case_dates
-
-    def _get_docket_numbers(self):
-        doc=[]
-        # print(self.ctr)
-        path = f"{self.path_base}/td[2]//text()"
-        custom_ctr=0
-        for text in self.html.xpath(path):
-            if custom_ctr==self.ctr:
-                break
-            text=str(text).strip()
-            if text:
-                doc_arr=[]
-                if text.__contains__("/"):
-                    doc_arr=text.replace(" ","").split('/')
-                elif text.__contains__("&"):
-                    doc_arr=text.replace(" ","").split('&')
-                else:
-                    doc_arr.append(text)
-                doc.append(doc_arr)
-                custom_ctr+=1
-        return doc
-
-    def _get_precedential_statuses(self):
-        return ["Published"] * self.ctr
+                        url = (
+                            opinion
+                            .get("opinion_file", {})
+                            .get("value", {})
+                            .get("url", "")
+                        )
+                        summary = opinion.get("summary", {}).get("value", "")
+                        self.cases.append(
+                            {
+                                "date": date,
+                                "docket": docket_numbers,
+                                "url": url,
+                                "name": title,
+                                "status": self.case_status,
+                                "summary":summary
+                            }
+                        )
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         self.parse()

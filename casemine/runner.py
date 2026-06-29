@@ -40,12 +40,16 @@ from juriscraper.opinions.united_states.state import arkctapp, mich_orders, \
     scscop_p, ri, ri_ordr, ri_supr, ri_trf_tri, pa, pacommwct, nydistct, \
     oklacrimapp, cal_work, alacivapp, ark_work_comp, ark_ag, nyappdiv_1st, \
     cal_work_panel, nycivct, nyclaimsct, nysurct, cal_work_sigpanel, \
-    conn_super, tex_jpml, conn_work
+    conn_super, tex_jpml, conn_work, calctapp_new_rg_u, calctapp_u, colo_new, \
+    moctapp_eastern, ohioctapp_2, wyo, texapp_1, texapp_2, texapp_3, nytrial, \
+    nyag, ariz_new, okla_new, mo_ag, okla_sc_new, texapp_5, texapp_10, \
+    texapp_13, texapp_15, vactapp_u, njtaxct_p, scapp_u, md_supreme, \
+    ohioctapp_7
 
 # Create a site object
-site = wisctapp.Site()
+site =  alaskactapp_orders.Site()
 
-site.execute_job("wisctapp")
+site.execute_job("alaskactapp_orders")
 
 # print(f"Total judgements: {site.cases.__len__()}")
 
