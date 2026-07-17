@@ -37,7 +37,7 @@ class Site(OpinionSiteLinear):
 
     def hit_retry(self,html_url):
         try:
-            response = requests.get(url=html_url, proxies={"http": "p.webshare.io:9999", "https": "p.webshare.io:9999"}, timeout=120)
+            response = requests.get(url=html_url, proxies={"http": "23.236.154.202:8800", "https": "23.236.154.202:8800"}, timeout=120)
             if response.status_code==200:
                 payload = response.content.decode("utf8")
                 text = self._clean_text(payload)
@@ -57,10 +57,12 @@ class Site(OpinionSiteLinear):
         for table in self.html.xpath(
             "//table[contains(@class, 'cms-opinion-table')]"):
             # Extract the date of publication from the preceding <h5>
-            adate_elem = table.xpath("./preceding-sibling::h5[1]/b")
+            adate_elem = table.xpath("./preceding-sibling::h5[@title='Publication Date'][1]/strong")
             if not adate_elem:
                 continue
             adate = adate_elem[0].text_content().strip()
+
+            date = adate.split(",", 1)[1].strip()
 
             # Skip dates outside backscrape range
             if self.is_backscrape and not self.date_is_in_backscrape_range(
@@ -130,6 +132,7 @@ class Site(OpinionSiteLinear):
                 docs = [d.strip() for d in docs if
                         d.strip()]  # remove leading/trailing spaces & empty items
                 title = title.strip()
+                print(title)
                 cite = [c.strip() for c in cite if c.strip()]
 
                 # Fix URL if it doesn't start with full HTTPS
@@ -137,7 +140,7 @@ class Site(OpinionSiteLinear):
                     url = "https://appellate-records.courts.alaska.gov" + url
                 self.cases.append(
                     {
-                        "date": adate,
+                        "date": date,
                         "docket": docs,
                         "name": title,
                         "citation": cite,

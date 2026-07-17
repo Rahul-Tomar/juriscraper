@@ -48,15 +48,18 @@ class Site(OpinionSiteLinear):
             # - "October 19, 2021—SUMMARIES for NOTEWORTHY OPINIONS"
             # - "July 7, 2021"
             # - "February 15, 2021 – SUMMARIES for NOTEWORTHY OPINIONS"
-            summary = \
-                link.xpath(".//parent::li/parent::ul/preceding-sibling::p[1]")[
-                    0].text_content()
+            summary_nodes = link.xpath(
+                ".//parent::li/parent::ul/preceding-sibling::p[1]")
+
+            if summary_nodes:
+                summary = summary_nodes[0].text_content().strip()
+            else:
+                summary = ""
             # Character separator for dates from summary text could be:
             # - dash: "-"
             # - hyphen: "—"
             # - character U+2013: "–"
-            date_str = (
-                summary.split("–")[0].split("—")[0].split("-")[0].strip())
+            date_str = self.get_date_from_link(link)
             date_summary = datetime.strptime(date_str, "%B %d, %Y")
             comp_date=date_summary.strftime("%d/%m/%Y")
             res=CasemineUtil.compare_date(self.crawled_till,comp_date)
@@ -75,6 +78,29 @@ class Site(OpinionSiteLinear):
             self.cases.append(
                 {"date": date_str, "docket": new_doc, "name": titlecase(name),
                  "url": url, })
+
+    def get_date_from_link(self, link):
+        ul_nodes = link.xpath("./ancestor::ul[1]")
+
+        if not ul_nodes:
+            return ""
+
+        node = ul_nodes[0].getprevious()
+
+        while node is not None:
+            text = (node.text_content() or "").strip()
+
+            match = re.search(
+                r"[A-Za-z]+\s+\d{1,2},\s+\d{4}",
+                text
+            )
+
+            if match:
+                return match.group(0).strip()
+
+            node = node.getprevious()
+
+        return ""
 
     def _download_backwards(self, year) -> None:
         self.url = self._get_url(year)

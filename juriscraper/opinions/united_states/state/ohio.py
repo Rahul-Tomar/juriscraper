@@ -42,20 +42,40 @@ class Site(OpinionSiteLinear):
     def _get_minute_orders(self):
         return self._get_optional_field_by_id("minute_orders")
 
-    def _set_parameters(self,start_year,end_year) -> None:
+    def _set_parameters(self, start_year, end_year) -> None:
         event_validation = self.html.xpath("//input[@id='__EVENTVALIDATION']")
         view_state = self.html.xpath("//input[@id='__VIEWSTATE']")
+        view_state_generator = self.html.xpath(
+            "//input[@id='__VIEWSTATEGENERATOR']")
+        view_state_encrypted = self.html.xpath(
+            "//input[@id='__VIEWSTATEENCRYPTED']")
+
+        if not view_state:
+            raise Exception(
+                "__VIEWSTATE not found. You are not getting the real form page.")
+
         self.parameters = {
-            "__VIEWSTATEENCRYPTED": "",
+            "__VIEWSTATEENCRYPTED": view_state_encrypted[0].get(
+                "value") if view_state_encrypted else "",
+            "__VIEWSTATE": view_state[0].get("value"),
             "ctl00$MainContent$ddlCourt": f"{self.court_index}",
             "ctl00$MainContent$ddlDecidedYearMin": str(start_year),
             "ctl00$MainContent$ddlDecidedYearMax": str(end_year),
             "ctl00$MainContent$ddlCounty": "0",
             "ctl00$MainContent$btnSubmit": "Submit",
             "ctl00$MainContent$ddlRowsPerPage": "50",
-            "__EVENTVALIDATION": event_validation[0].get("value"),
-            "__VIEWSTATE": view_state[0].get("value"),
         }
+
+        if view_state_generator:
+            self.parameters["__VIEWSTATEGENERATOR"] = view_state_generator[
+                0].get("value")
+
+        if event_validation:
+            self.parameters["__EVENTVALIDATION"] = event_validation[0].get(
+                "value")
+        # else:
+            # print("__EVENTVALIDATION not found, posting without it")
+
         self.method = "POST"
 
     def _set_parameters1(self,start_year,end_year) -> None:
@@ -70,9 +90,14 @@ class Site(OpinionSiteLinear):
             "ctl00$MainContent$ddlDecidedYearMax": str(end_year),
             "ctl00$MainContent$ddlCounty": "0",
             "ctl00$MainContent$ddlRowsPerPage": "50",
-            "__EVENTVALIDATION": event_validation[0].get("value"),
             "__VIEWSTATE": view_state[0].get("value"),
         }
+        if event_validation:
+            self.parameters["__EVENTVALIDATION"] = event_validation[0].get(
+                "value")
+        else:
+            print("__EVENTVALIDATION not found, posting without it")
+
         self.method = "POST"
 
     def _set_parameters2(self,start_year,end_year) -> None:
