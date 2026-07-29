@@ -92,9 +92,9 @@ class Site(OpinionSiteLinear):
                 # print(f"Downloading PDF attempt {attempt + 1}: {pdf_url}")
                 # print(f"Using proxy: {proxy_url}")
                 cookies = {
-                    "AWSALB": "SMkCCrNPL33tApViBAQDmmopkX7mb2oypZS4whqtD7/LC92s7MCXdKyzMmf1nYbFlGJifW5WRrOjarY/5VF/jxDIIjAkIJ2PBvrS+rWHhCSVVVDLLZuyhxalPj8g",
-                    "AWSALBCORS": "SMkCCrNPL33tApViBAQDmmopkX7mb2oypZS4whqtD7/LC92s7MCXdKyzMmf1nYbFlGJifW5WRrOjarY/5VF/jxDIIjAkIJ2PBvrS+rWHhCSVVVDLLZuyhxalPj8g",
-                    "aws-waf-token": "bec116f2-ebdd-4efb-9182-d238cda89590:EgoAeyJKV5lRAAAA:RybqQYvmY9wrT4QdYzi5ZoHSmdLgxzFeFSj15Nb/s0Fd76qtstmsGehXidznOthhwCfw0wFfEcZyVacOvexVO4MyEruIfF6ssuRl6rk4rcOskaQ65KICu5xJ/Q19mP3OnHxysQHGwvgDxvshd4jtqke5Sz2oYxwxH50/9dtlYRAHSywyFQwkYE+w/XIgr2LaGZK7ztf85HvtppqlM1vWSF/JKDR2CPX3MA5L/RA+Bwe+QZVtbsxEQu2iJSHTln0lWejfyFmSg+C0ylHX/nod6zlRBw09BTpkYosdJIFxBhUlU4tokMx0ORJGkj88oQfnrcdIAnuJJKI=",
+                    "AWSALB": "pxX5HLTauUh0ib76tt/1oTMyIe+OoduWEFI614s7Xf67+C30IhrUGzAYWHWpHoP+cPlR2ayJEoKEyIvUWKm3xQ/KuJ4tEir2BYZwFRXM1qL5DHqCWNsWDY34stWZ",
+                    "AWSALBCORS": "pxX5HLTauUh0ib76tt/1oTMyIe+OoduWEFI614s7Xf67+C30IhrUGzAYWHWpHoP+cPlR2ayJEoKEyIvUWKm3xQ/KuJ4tEir2BYZwFRXM1qL5DHqCWNsWDY34stWZ",
+                    "aws-waf-token": "abc16cb7-c491-4b09-8e4e-18ffd4e1cf69:EgoArTcqwI+wAAAA:3wOcTlrrl10AsYjl5NvtGHwhGs99bwe0tU3Eg+Emvz1ylhN6XWt7vfpNtQU/BF/tZr5tlFBUMc0PPJgEDe14VEp27Q/I1/RugGBjtPpiFEON35ai4VI91WGLvj4VrBaSEnUvzrJIDRIYopa45gQnoMcqC3rd0jdqyo2/ZiZ+RwhrV4o2HR9mI/TaWoQMJRXfHfEh7PPkg/gJcbfLvRTx9yZXGaDXK3EszfddvpQtgNt3ZIaR1vBNIFyMUv0+3disNfw4No9Aps4ILajnonSQJGIKqIO4k8YXylIptKT1Wo7zF2SZx+2JNYskWlC/aqjtNzFLJmKqrhI=",
                 }
                 response = requests.get(
                     pdf_url,  # IMPORTANT: use pdf_url, not self.url
@@ -158,7 +158,7 @@ class Site(OpinionSiteLinear):
 
     def _download(self):
         cookies = {
-            "aws-waf-token":"4cb7b29f-6c7e-4ff4-9b83-c11ca1150843:EQoAlAFKuw0GAAAA:/e/MS5JhU4OEZ+widNQ/ZGWPNxleie4OrowBIJp8Cofu2NJUbdlvBoSakwk4IyEhzI6RK/tWjUI5AAWGPLHlCutFe9AEbZL0LMri3m3U4y1axxXJZuHIsJei6HW1guaKj5bD5H/3+evkBbI4ZxrxOX9O3Dk1pCYW1O7igkHjIMk31+RNS2N6MQWfktW+8kr1KuTklMl9pB3HpSWToz8Xl5m+qj5soiWOmNN259aJQkRt3dWXZnWVEJj9Za0a8TDBuWitTfCaXveKZsDcyZlh+1mpizrNv2CclRXFVyWjEQIJUkI+86vAOjyPqMpvXWxCNgD3J5D8"
+            "aws-waf-token":"fb4de8ec-9513-4073-8bec-027a21ce75a7:EQoAqiQrEgJcAAAA:yZemRNxDKPIjaGZyWTdbWYeBaBUInKnthuFQ/laVTdpmPp8aN2M3cVw4zJUyfADEIsTSNFCPiEeKh4ThOTz/CzXG3+9ZYlCQaPA3rbzjZus5F1KrKoy7kq8k/w74NrhWVEBFW14DEZ4VCLlFR43yxM8/Eyo5MZfhRqJaNkJuVqT83hoMAJty1JbcqTscRoRN921ZlNsm5+dYS33c9huM9DBp8STtPNW+7+l5TEYII877SVOSV+XmRehWghnGuSDpYT+Tby89rb5IL4iWbETLIwaOfEUBMQokCHD2ipFBMdPxzVf+V8IU0pJessJQ0uaWDJFvlrxq"
         }
         proxy_url = self.proxies.get("https") or self.proxies.get("http")
         try:

@@ -37,7 +37,12 @@ class Site(OpinionSiteLinear):
 
     def hit_retry(self,html_url):
         try:
-            response = requests.get(url=html_url, proxies={"http": "23.236.154.202:8800", "https": "23.236.154.202:8800"}, timeout=120)
+            headers = {
+                "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5"
+            }
+            response = requests.get(url=html_url,headers=headers, proxies={"http": "23.236.154.202:8800", "https": "23.236.154.202:8800"}, timeout=120)
             if response.status_code==200:
                 payload = response.content.decode("utf8")
                 text = self._clean_text(payload)
@@ -59,7 +64,11 @@ class Site(OpinionSiteLinear):
             # Extract the date of publication from the preceding <h5>
             adate_elem = table.xpath("./preceding-sibling::h5[@title='Publication Date'][1]/strong")
             if not adate_elem:
-                continue
+                adate_elem = table.xpath(
+                    "./preceding-sibling::h5[@title='Date of Publication'][1]/strong/"
+                )
+                if not adate_elem:
+                    continue
             adate = adate_elem[0].text_content().strip()
 
             date = adate.split(",", 1)[1].strip()
@@ -87,6 +96,7 @@ class Site(OpinionSiteLinear):
                 elif html_links:
                     # PDF missing, fallback: hit the HTML case page to get PDF
                     html_url = html_links[0]
+                    html_url = html_url.replace("'","")
                     if not html_url.startswith("https"):
                         html_url = "https://appellate-records.courts.alaska.gov" + html_url
                     retry_flag = True
@@ -133,6 +143,7 @@ class Site(OpinionSiteLinear):
                         d.strip()]  # remove leading/trailing spaces & empty items
                 title = title.strip()
                 print(title)
+
                 cite = [c.strip() for c in cite if c.strip()]
 
                 # Fix URL if it doesn't start with full HTTPS
@@ -148,68 +159,6 @@ class Site(OpinionSiteLinear):
                         "opinion_type": self.opinion_type
                     }
                 )
-
-    #  Gave issue on 24 Nov so commented out and different process html is written above
-    # def _process_html(self) -> None:
-    #     if not self.html:
-    #         logger.info("HTML was not downloaded from source page. Should retry")
-    #         return
-    #     for table in self.html.xpath("//table[contains(@class, 'cms-opinion-table')]"):
-    #         print(table.text)
-    #         adate = table.xpath("./preceding-sibling::h5")[0].text_content()
-    #         if self.is_backscrape and not self.date_is_in_backscrape_range(adate):
-    #             logger.debug("Backscraper skipping %s", adate)
-    #             continue
-    #         for row in table.xpath(".//tr"):
-    #             print(row.text_content().strip())  # prints all text inside the row
-    #             print(etree.tostring(row, pretty_print=True).decode())
-    #         if row.text_content().strip():
-    #                 # skip rows without PDF links in first column
-    #                 try:
-    #                     url = get_row_column_links(row, 1)
-    #                     url=str(url).replace("'","%27")
-    #                     # print(f"{adate} Main-Pdf - {url}")
-    #                 except IndexError:
-    #                     html_url=row.xpath('.//td[@title="Case Number and Link to the Case"]/a/@href')[0]
-    #                     print(f"{adate} html-url - {html_url}")
-    #                     retry_flag = True
-    #                     text = None
-    #                     while retry_flag:
-    #                         text = self.hit_retry(html_url)
-    #                         print("\n\t!! HIT AGAIN !!")
-    #                         if not str(text).__eq__("HIT AGAIN"):
-    #                             retry_flag=False
-    #
-    #                     if text is not None:
-    #                         html_tree = self._make_html_tree(text)
-    #                         url = 'https://appellate-records.courts.alaska.gov' + html_tree.xpath("//table[@class='table cms-case-other-table table-striped']//tr//td[@title='Document Download']/a/@href")[0]
-    #                         print(f"{adate} New-Pdf - {url}\n")
-    #
-    #                 curr_date = datetime.strptime(adate, "%A, %B %d, %Y").strftime("%d/%m/%Y")
-    #                 res=CasemineUtil.compare_date(self.crawled_till, curr_date)
-    #                 if res==1:
-    #                     return
-    #                 if self.opinion_type.__eq__("bail orders") or self.opinion_type.__eq__("orders"):
-    #                     docs = str(get_row_column_text(row, 2)).replace(" ","").split(",")
-    #                     title=get_row_column_text(row, 3)
-    #                 else:
-    #                     docs = str(get_row_column_text(row, 3)).replace(" ","").split(",")
-    #                     title = get_row_column_text(row, 4)
-    #                 cite = []
-    #                 if self.url.__eq__("https://appellate-records.courts.alaska.gov/CMSPublic/Home/Opinions?isCOA=False"):
-    #                     cite = str(get_row_column_text(row, 5)).split(",")
-    #                 # print(cite)
-    #
-    #                 self.cases.append(
-    #                     {
-    #                         "date": adate,
-    #                         "docket": docs,
-    #                         "name": title,
-    #                         "citation": cite,
-    #                         "url": url,
-    #                         "opinion_type":self.opinion_type
-    #                     }
-    #                 )
 
     def make_backscrape_iterable(self, kwargs: Dict) -> None:
         """Checks if backscrape start and end arguments have been passed

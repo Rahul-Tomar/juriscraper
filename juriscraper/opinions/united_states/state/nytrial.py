@@ -29,7 +29,7 @@ from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 class Site(OpinionSiteLinear):
     court_regex: str  # to be defined on inheriting classes
-    base_url = "https://nycourts.gov/reporter/slipidx/miscolo.shtml"
+    base_url = "https://nycourts.gov/reporter/current/index/miscolo.shtml"
     first_opinion_date = date(2003, 12, 1)
 
     def __init__(self, *args, **kwargs):

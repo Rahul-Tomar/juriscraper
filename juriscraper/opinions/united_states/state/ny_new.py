@@ -78,7 +78,9 @@ class Site(OpinionSiteLinear):
                 if str(title).__eq__("Title") and str(slip_op).__eq__("Slip Opinion No.") :
                     continue
 
-                date = datetime.strptime(current_date, "%B %d, %Y").strftime("%d/%m/%Y")
+                normalized_date = self.normalize_decision_date(current_date)
+
+                date = datetime.strptime(normalized_date,"%B %d, %Y").strftime("%d/%m/%Y")
                 res = CasemineUtil.compare_date(self.crawled_till, date)
                 if res == 1:
                     continue
@@ -91,6 +93,41 @@ class Site(OpinionSiteLinear):
                 })
                 # print(f"{i} - {current_date} || {title} || {docket} || {slip_op} || {judge}")
             i+=1
+
+    def normalize_decision_date(self, date_text):
+        """
+        Convert different NY Courts date formats:
+
+        April 23rd
+        April 23rd, 2026
+        April 23, 2026
+
+        into:
+
+        April 23, 2026
+        """
+
+        if not date_text:
+            return None
+
+        date_text = (
+            date_text
+            .replace("\xa0", " ")
+            .strip()
+        )
+
+        # Remove ordinal suffixes
+        date_text = re.sub(
+            r'(\d+)(st|nd|rd|th)',
+            r'\1',
+            date_text
+        )
+
+        # Current page does not contain year
+        if not re.search(r'\d{4}', date_text):
+            date_text = f"{date_text}, {datetime.now().year}"
+
+        return date_text
 
     @override
     def _request_url_get(self, url):
@@ -119,6 +156,7 @@ class Site(OpinionSiteLinear):
         for year in range(start_date.year,end_date.year+1):
             for month in months:
                 self.url=self.get_url(year,month)
+                self.url = self.url.replace("slipidx","current/index")
                 print(self.url)
                 self.parse()
         return 0
@@ -234,6 +272,12 @@ class Site(OpinionSiteLinear):
 
             #  Parse HTML
             soup = BeautifulSoup(html, "lxml")
+
+            for breadcrumb in soup.select(
+                'nav[aria-label="breadcrumb"], '
+                '.breadcrumb-container'
+            ):
+                breadcrumb.decompose()
 
             # Force UTF-8 for wkhtmltopdf
             if soup.head:
@@ -468,7 +512,11 @@ class Site(OpinionSiteLinear):
                 # if pdf url contains html then refine it and convert html to pdf and also save modified html
                 html_text = self.prepare_html_for_pdf(response.text)
                 soup = BeautifulSoup(html_text, 'html.parser')
-
+                for breadcrumb in soup.select(
+                    'nav[aria-label="breadcrumb"], '
+                    '.breadcrumb-container'
+                ):
+                    breadcrumb.decompose()
                 # Force UTF-8 for wkhtmltopdf
                 if soup.head:
                     for old_meta in soup.find_all("meta"):

@@ -47,11 +47,16 @@ class Site(OpinionSiteLinear):
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
-                proxy={"server": "http://156.241.216.136:8800"}
+                proxy={"server": "http://23.236.154.202:8800"}
             )
 
             context = browser.new_context(
-                user_agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+                user_agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
+                extra_http_headers={
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.5",
+                    "Accept-Encoding": "gzip, deflate, br, zstd"
+                }
             )
 
             page = context.new_page()
@@ -321,7 +326,7 @@ class Site(OpinionSiteLinear):
                         url=pdf_url,
                         headers={
                             "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
-                            "Cookie": "_ga=GA1.1.1806381042.1744970826; _ga_29RGJ6WCSR=GS1.1.1744970826.1.1.1744971051.0.0.0; _ga_72465JF1Y8=GS2.1.s1776663425$o11$g1$t1776663434$j51$l0$h0; cf_clearance=PfrGU8_HNdAglRtYBkcas3nsCOcedFBA9LEqPdkEsD8-1776663427-1.2.1.1-hEMl0j6B0JrKxQDA6VhtuzQG.YtkmQ_zpTGf8zOweXHh8ZVK_9jIoeNCeW5uo.UFof1VuHFcf7tbr4nu45ZmI1vk9kRP_c1nuKY0lz52j2t_tUxWC9TDEVupJ1_OiTDYwXsIQlaUdUFgLwpNXkKTyYcb7cuHLAvZ7nJeL9Ty_.wneTISXid9Onklr.aWO3EjnKPQCU_4dEkA3cyybE5JSreeZ3YeDtn.4C0UBXyo4WVRXSB1a3e8t7bXkINvunXGx_nZAXhnEmoZJQMV.MXkoiSnh.VYFJVlIIVVpelHc9XQ4TbZPHoHEjJs3lyG2M3q5Qx3m8UTvnKClEyZY3wTSA; __cf_bm=KKSZRxhwek.2w16ZF.t0lYMrvpMPoqj7VVa2QLPnbkU-1776663427.1990614-1.0.1.1-JcokwPwYoZfCwQQIJhKLuJJqqe8A9KP_LFQxEaqtyMIzQxNGml6W1vcP.AccYOript3pEJ3GjN36C1uT2DE_uJqMV7dKcIds6iahXNM1THhhnsLLZnpQ.DDUeoZFGKOQ"
+                            "Cookie": "_ga=GA1.1.1806381042.1744970826; _ga_29RGJ6WCSR=GS1.1.1744970826.1.1.1744971051.0.0.0; _ga_72465JF1Y8=GS2.1.s1785153665$o20$g1$t1785155143$j60$l0$h0; cf_clearance=xf1vEeGUSiDDHuXjWY.wldIMouuc287iVq5O1JsOSks-1785154964-1.2.1.1-XyxBjmSzH2w07BHroKhVLc1CuRn2BNrhsYVoj4lqSeP_7YdRxIdNf_STJ7Df2evUfqJSKdehz5eipeWN3LW.qXHft4hEl5m4F.J57GIcGAUWYPTA4d3oeYc2nxxLorL.QdMloA1XHoe4e2xERXlBfQdLbDlKrkPNBWRcsIk7EQZemx4uiQ.N8GYKbo0bpRrfFzisaCw1uJAk4pufBydNL4yZbwQYxv_Fx9NmvF3N1KZP8Kg2qJ2Yzk5EtJjc_Yh.CjYtOjZ_MsUnXQoPwLjfeZDOe6zU40d9.oPEusmMZKsFyaamiwKKYxXBYsSA1Lehjpcu8gwhZp6mHvk.zVCx6izIJO0kNfYmQ_rseFFcVmw; __cf_bm=dErc.2mug60XS8vTad.tpaUgAO1khYU5fhxbluIuQac-1785154964.8274245-1.0.1.1-K2R05YksR_UNp8oc_xgivr07LhLOQ2rWtacjjbLFFFfbED.vP0Q74xV7Y3H8lpecT6uLvLCh0NKvkP8n0cKwaYLdSmU7uPyRZeUa84BHXUMUAVnfttrXzkk7v_c0_rTs"
                         },
                         proxies={
                             "http": f"http://{us_proxy.ip}:{us_proxy.port}",

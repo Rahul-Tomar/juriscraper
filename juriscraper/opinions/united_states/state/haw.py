@@ -12,11 +12,6 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         self.court_code = "S.Ct"
         self.status = "Published"
-        self.proxies={
-            # 'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050',    156.241.229.113
-            "http": "http://46.175.152.96:8800",
-            "https": "http://46.175.152.96:8800"
-        }
 
     def _process_html(self) -> None:
         """Parse HTML into case objects
@@ -47,6 +42,20 @@ class Site(OpinionSiteLinear):
                 "lower_court": lower_court.text_content(),
                 "citation": [citation.text_content()],
             })
+
+    def _request_url_get(self, url):
+        """Execute GET request and assign appropriate request dictionary
+        values
+        """
+        self.request["url"] = url
+        self.request["response"] = self.request["session"].get(
+            url,
+            headers=self.request["headers"],
+            verify=self.request["verify"],
+            proxies=self.india_proxies,
+            timeout=60,
+            **self.request["parameters"],
+        )
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         for year in range(start_date.year, end_date.year+1):

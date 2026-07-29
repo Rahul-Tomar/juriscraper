@@ -11,7 +11,7 @@ class Site(nyappdiv1_motions.Site):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.link_regex = 'mots_crimleav'
-        self.base_url="https://nycourts.gov/reporter/motindex/mots_crimleav_list.shtml"
+        self.base_url="https://www.nycourts.gov/reporter/current/index/mots_crimleav_04-2026.shtml"
 
     def _process_html(self):
         i = 1

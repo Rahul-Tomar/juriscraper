@@ -11,7 +11,7 @@ from juriscraper.opinions.united_states.state import nycityct, nytrial
 
 
 class Site(nycityct.Site):
-    base_url = "https://nycourts.gov/reporter/slipidx/com_div_idxtable.shtml"
+    base_url = "https://www.nycourts.gov/reporter/current/index/com_div_idxtable_2026_june.shtml"
     court_regex = r".*"
     first_opinion_date = date(2013, 7, 1)
 

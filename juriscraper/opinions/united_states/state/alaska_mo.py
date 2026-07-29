@@ -1,7 +1,7 @@
-from juriscraper.opinions.united_states.state import alaska
+from juriscraper.opinions.united_states.state import alaska, alaskactapp_mo
 
 
-class Site(alaska.Site):
+class Site(alaskactapp_mo.Site):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
