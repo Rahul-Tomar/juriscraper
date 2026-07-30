@@ -46,6 +46,7 @@ class Site(OpinionSiteLinear):
                         opinion = block.get("content", {})
 
                         title = opinion.get("title", {}).get("value", "")
+                        # print(title)
                         docket_raw = opinion.get("docket_number", {}).get(
                             "value", "")
 
@@ -65,10 +66,30 @@ class Site(OpinionSiteLinear):
 
                         date = str(date).strip()
 
-                        try:
-                            datetime.strptime(date, "%B %d, %Y")
-                        except ValueError:
+                        for fmt in (
+                                "%B %d, %Y",
+                                "%Y/%m/%d",
+                                "%Y-%m-%d",
+                                "%m/%d/%Y",
+                                "%d/%m/%Y",
+                        ):
+                            try:
+                                parsed_date = datetime.strptime(date, fmt)
+                                break
+                            except ValueError:
+                                parsed_date = None
+
+                        if parsed_date is None:
+                            print(f"Unsupported date format: {date}")
                             continue
+
+                        case_date = parsed_date.strftime("%B %d, %Y")
+
+                        if CasemineUtil.compare_date(
+                            self.crawled_till,
+                            parsed_date.strftime("%d/%m/%Y")
+                        ) == 1:
+                            return len(self.cases)
 
                         url = (
                             opinion
@@ -79,7 +100,7 @@ class Site(OpinionSiteLinear):
                         summary = opinion.get("summary", {}).get("value", "")
                         self.cases.append(
                             {
-                                "date": date,
+                                "date": case_date,
                                 "docket": docket_numbers,
                                 "url": url,
                                 "name": title,

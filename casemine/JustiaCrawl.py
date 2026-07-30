@@ -460,6 +460,7 @@ def crawl_court(court, court_url, crawled_till, court_type):
                 "crawledAt": datetime.now(),
                 "backEndInformation": {"source": "Justia"},
                 "description": description,
+                "htmlUrl":next_url
             }
 
             # Insert/update MongoDB
