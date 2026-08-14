@@ -21,6 +21,7 @@ class Site(OpinionSiteLinear):
         self.court_id = self.__module__
         # Feeling down and tired of your regular life? Check out this website.
         self.url = "https://www.appeals2.az.gov/ODSPlus/recentDecisionsHTML.cfm"
+        # self.url ="https://coa1.azcourts.gov/Decisions/SearchDecisions"
         self.cases = []
 
     def _process_html(self) -> None:

@@ -11,7 +11,6 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.status = "Published"
-        self.method = "POST"
         self.url = "https://lafcca.hosted2.civiclive.com/portal/svc/ContentItemSvc.asmx/GetItemList"
         temp_date = None
         # Request payload
@@ -96,32 +95,48 @@ class Site(OpinionSiteLinear):
             print(f"[INFO] Total items: {len(items)}")
 
             for item in items:
-                i=1
-                full_title = item.get("Title", "")
-                date_str = item.get("CreationDateString", "")
-                url = item.get("DownloadLink", "")
+                full_title = item.get("Title", "").strip()
+                date_str = item.get("CreationDateString", "").strip()
+                url = item.get("DownloadLink", "").strip()
 
-                # Convert "06 October, 2025" -> "06/10/2025"
-                date = datetime.strptime(date_str, "%d %B, %Y").strftime("%Y-%m-%d")
-                # print(date)
+                if not full_title or not date_str:
+                    continue
 
-                # Extract docket at start of title and remove from title
-                match = re.match(r"^(\d{4}\s+[A-Z]{2}\s+\d+)\s+(.*)",
-                                 full_title)
-                if match:
-                    docket = [match.group(1)]
-                    name = match.group(2)
-                else:
-                    raise ValueError(
-                        f"Title does not start with a docket number: {full_title}")
+                try:
+                    date = datetime.strptime(
+                        date_str,
+                        "%d %B, %Y"
+                    ).strftime("%d/%m/%Y")
+                except ValueError:
+                    print(f"Invalid date format: {date_str}")
+                    continue
 
-                res = CasemineUtil.compare_date(self.crawled_till, date)
-                if res==1:
+                match = re.match(
+                    r"^(\d{4}\s+[A-Z]{2}\s+\d+)\s+(.*)$",
+                    full_title
+                )
+
+                if not match:
+                    print(f"Invalid title format: {full_title}")
+                    continue
+
+                docket = [match.group(1).strip()]
+                name = match.group(2).strip()
+
+                res = CasemineUtil.compare_date(
+                    self.crawled_till,
+                    date
+                )
+
+                if res >= 0:
                     continue
 
                 self.cases.append({
-                    "docket": docket, "name": name, "url": url,
-                    "date": date_str})
+                    "docket": docket,
+                    "name": name,
+                    "url": url,
+                    "date": date_str
+                })
                 # print(f"📅 Date: {date_str} | 🧾 Docket: {docket} | Title: {name} | PDF: {url}")
 
         except Exception as e:

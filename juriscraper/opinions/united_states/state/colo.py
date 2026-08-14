@@ -62,8 +62,8 @@ class Site(OpinionSiteLinear):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
-        print(type(self).status)
-        print(type(self).api_court_code)
+        # print(type(self).status)
+        # print(type(self).api_court_code)
         self.params = {
             "product_id": "WW",
             "jurisdiction": "US",
@@ -82,7 +82,7 @@ class Site(OpinionSiteLinear):
             "type": "document",
         }
         self.url = f"{self.base_url}?{urlencode(self.params)}"
-        print(f"[INIT] Base URL initialized:\n{self.url}\n")
+        # print(f"[INIT] Base URL initialized:\n{self.url}\n")
 
         self.request["headers"].update(
             {
@@ -107,16 +107,16 @@ class Site(OpinionSiteLinear):
             search_json.get("count"),
             len(search_json.get("results", [])),
         )
-        print(f"[PROCESS_HTML] Found {search_json.get('count')} total results.")
+        # print(f"[PROCESS_HTML] Found {search_json.get('count')} total results.")
         case_pattern = r"\b\d+[A-Z]+\d+\b"
 
         for i, result in enumerate(search_json.get("results", []), start=1):
             if self.processed_total >= total_results:
-                print(f"🚫 Stopping — reached total_results={total_results}")
+                # print(f"🚫 Stopping — reached total_results={total_results}")
                 return
-            print(f"\n=== Processing case {i} ===")
+            # print(f"\n=== Processing case {i} ===")
             case_id = result.get("id")
-            print("Case ID:", case_id)
+            # print("Case ID:", case_id)
             timestamp = str(datetime.now().timestamp())[:10]
             url = self.detail_url.format(case_id, timestamp)
             # print("Detail URL:", url)
@@ -144,13 +144,14 @@ class Site(OpinionSiteLinear):
                     docket_number = values[0]
                 elif label == "Parties" and values:
                     case_name_full = values[0]
+
                 elif label == "Decision Date" and values:
                     date_filed = values[0]
                 elif label == "Citation" and values:
                     citation = values[0]
                     parallel_citation = values[1:] if len(values) > 1 else []
 
-            print("Raw date filed:", date_filed)
+            # print("Raw date filed:", date_filed)
             # print("Docket number:", docket_number)
             # print("Case name:", case_name_full)
             # print("Citation:", citation)
@@ -160,37 +161,40 @@ class Site(OpinionSiteLinear):
                 curr_date_obj = convert_date_string(date_filed)
                 parse_date = curr_date_obj.strftime("%d/%m/%Y")
                 curr_date = curr_date_obj.strftime("%Y-%m-%d")
-                print("Converted date:", curr_date)
+                # print("Converted date:", curr_date)
             except Exception as e:
                 print(f"Error converting date '{date_filed}':", e)
                 continue
 
             try:
                 res = CasemineUtil.compare_date(self.crawled_till, parse_date)
-                print(f"Date comparison: crawled_till={self.crawled_till}, case_date={curr_date}, result={res}")
+                # print(f"Date comparison: crawled_till={self.crawled_till}, case_date={curr_date}, result={res}")
             except Exception as e:
                 print("Error comparing date:", e)
                 continue
 
             if res == 1:
-                print("⚠️ Case date beyond crawled_till, skipping remaining cases.")
+                # print("⚠️ Case date beyond crawled_till, skipping remaining cases.")
                 return
 
             match = re.search(case_pattern, docket_number)
             docket_match = match.group() if match else docket_number
+
+            if not case_name_full:
+                continue
 
             case = {
                 "date": date_filed,
                 "docket": [docket_match],
                 "name": case_name_full,
                 "url": f"https://research.coloradojudicial.gov/pdf/{case_id}",
-                "status": type(self).status,
+                "status": self.status,
                 "citation": [citation],
                 "parallel_citation": parallel_citation,
                 "html_url": html_url,
                 "response_html": html_res.text,
             }
-            print(f"✅ Case appended: {case['docket']} | {case['name']} | {case['date']}")
+            # print(f"✅ Case appended: {case['docket']} | {case['name']} | {case['date']}")
             self.cases.append(case)
 
     def _download_backwards(self, dates: Tuple[date]) -> None:
