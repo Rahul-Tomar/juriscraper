@@ -17,7 +17,7 @@ class Site(OpinionSiteLinear):
         self.url="https://www.la3circuit.org/Cases/Opinions.aspx"
         now = datetime.now()
         self.month_number = now.month
-        self.month_year = now.year
+        self.month_year = str(now.year)
 
     def _download(self):
         self.downloader_executed = True

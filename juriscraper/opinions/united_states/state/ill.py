@@ -36,7 +36,6 @@ class Site(OpinionSiteLinear):
         self.url = (
             "https://www.illinoiscourts.gov/top-level-opinions?type=supreme")
         self.status = "Published"
-        self.make_backscrape_iterable(kwargs)
 
     def _get_docket(self, match: re.match) -> str:
         """Get docket_number from a regex match
@@ -109,73 +108,9 @@ class Site(OpinionSiteLinear):
             logger.warning(
                 "This source paginates at 150 results. There are 150 results for this page. Some opinions may be lost")
 
-    def _download_backwards(self, dates: Tuple[date]) -> None:
-        """Make custom date range POST request
-
-        :param dates: (start_date, end_date) tuple
-        :return None
-        """
-        # Make first request to get hidden input values
-        self.method = "GET"
-        self.html = self._download()
-
-        self.method = "POST"
-        logger.info("Backscraping for range %s %s", *dates)
-        self.get_target_page(dates)
-        self._process_html()
-
-    def get_target_page(self, dates: Tuple[date]) -> None:
-        """Makes requests until target page is loaded
-        The number of requests is variable on the "__VIEWSTATE"
-
-        :param dates: start and end date for backscrape
-
-        :return: dictionary with required values
-        """
-        self.parameters = {"__EVENTTARGET": "ctl00$ctl04$ddlFilterFilingDate",
-                           "ctl00$ctl04$txtFilterPostingFrom": "3/22/2014",
-                           "ctl00$ctl04$txtFilterPostingTo": "3/22/2025",
-                           "ctl00$ctl04$ddlFilterFilingDate": "Custom Date Range",
-                           "ctl00$ctl04$ddlFilterCourtType": self.court_filter,
-                           "ctl00$ctl04$hdnSortField": "FilingDate",
-                           "ctl00$ctl04$hdnSortDirection": "DESC",
-                           "ctl00$ctl04$txtFilterFilingFrom": dates[
-                               0].strftime("%-m/%d/%Y"),
-                           "ctl00$ctl04$txtFilterFilingTo": dates[1].strftime(
-                               "%-m/%d/%Y"), }
-
-        # if this is the first time loading the Custom Date Range filters
-        # we need to do 2 requests. Otherwise, 1 is enough.
-        # Due to the `site_yielder` used when backscraping, each backscrape
-        # iterable seed uses a new scraper object, so we can't reuse viewstates
-        for _ in range(2):
-            vs = self.html.xpath("//input[@name='__VIEWSTATE']/@value")[0]
-            self.parameters["__VIEWSTATE"] = vs
-            self.html = self._download()
-
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        self._request_url_get(self.url)
-        self._post_process_response()
-        temp_html = self._return_response_text_object()
-        hdn = temp_html.xpath("//div[@class='aspNetHidden']")[0]
-        views_state = hdn.xpath("//input[@id='__VIEWSTATE']/@value")[0]
-        self.parameters = {"__EVENTTARGET": "ctl00$ctl04$txtFilterFilingFrom",
-            "__EVENTARGUMENT": "", "__LASTFOCUS": "",
-            "__VIEWSTATE": views_state, "__VIEWSTATEGENERATOR": "66677877",
-            "ctl00$header$search$txtSearch": "",
-            "ctl00$ctl04$txtFilterName": "",
-            "ctl00$ctl04$txtFilterPostingFrom": "12/15/2014",
-            "ctl00$ctl04$txtFilterPostingTo": "12/15/2025",
-            "ctl00$ctl04$ddlFilterFilingDate": "Custom Date Range",
-            "ctl00$ctl04$txtFilterFilingFrom": start_date.strftime('%m/%d/%Y'),
-            "ctl00$ctl04$txtFilterFilingTo": end_date.strftime('%m/%d/%Y'),
-            "ctl00$ctl04$ddlFilterCourtType": "Supreme Court",
-            "ctl00$ctl04$ddlFilterStatus": "",
-            "ctl00$ctl04$hdnSortField": "FilingDate",
-            "ctl00$ctl04$hdnSortDirection": "DESC"}
-        self.method = 'POST'
         self.parse()
-        return 0
+        return len(self.cases)
 
     def get_court_name(self):
         return "Supreme Court of Illinois"

@@ -23,55 +23,185 @@ class Site(OpinionSiteLinear):
             'https': 'http://23.236.197.227:8800',
         }
         self.request["headers"]= {
-            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Encoding": "gzip, deflate, br, zstd",
             "Accept-Language": "en-US,en;q=0.5",
             "Connection": "keep-alive",
-            "Cookie": "_ga_RTSNWWBCT9=GS2.1.s1764148111$o8$g0$t1764148111$j60$l0$h0; _ga=GA1.2.2060124310.1745220238; _gid=GA1.2.650419508.1764148112; _gat_gtag_UA_23086129_1=1",
+            "Cookie": "KEY=1058639*1830053:2132610739:3636735101:1",
             "Host": "www.tncourts.gov",
-            "Referer": "https://www.tncourts.gov/courts/supreme-court/opinions",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-origin",
+            "Priority": "u=0, i",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
             "TE": "trailers",
+            "Upgrade-Insecure-Requests": "1",
             "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
-            "X-Requested-With": "XMLHttpRequest",
         }
 
     def _process_html(self):
-        # print(self.html)
-        self.html = self.html[2]['data']
-        text = self._clean_text(self.html)
+        import json
+        import html
+        from lxml import html as lxml_html
+
+        response = self.request.get("response")
+
+        if response is None:
+            raise Exception("Tennessee response object not found")
+
+        try:
+            raw_text = response.text
+        except Exception:
+            raw_text = response.content.decode("utf-8", errors="ignore")
+
+        raw_text = raw_text.strip()
+
+        if raw_text.lower().startswith("<textarea"):
+            tree = lxml_html.fromstring(raw_text)
+            textarea_data = tree.xpath("//textarea/text()")
+
+            if not textarea_data:
+                raise Exception(
+                    "Textarea found but Tennessee response is empty"
+                )
+
+            raw_text = textarea_data[0]
+
+        raw_text = html.unescape(raw_text).strip()
+
+        try:
+            ajax_data = json.loads(raw_text)
+        except Exception as e:
+            raise Exception(
+                f"Unable to parse Tennessee Drupal AJAX response: "
+                f"{raw_text[:500]}"
+            ) from e
+
+        html_data = None
+
+        for command in ajax_data:
+            if not isinstance(command, dict):
+                continue
+
+            if command.get("command") != "insert":
+                continue
+
+            data = command.get("data") or ""
+
+            if (
+                "<table" in data
+                and "views-field-field-opinions-date-filed" in data
+            ):
+                html_data = data
+                break
+
+        if not html_data:
+            raise Exception(
+                "Opinion table not found in Tennessee Drupal AJAX response"
+            )
+
+        text = self._clean_text(html_data)
         html_tree = self._make_html_tree(text)
+
         if hasattr(html_tree, "rewrite_links"):
-            html_tree.rewrite_links(fix_links_in_lxml_tree,
-                                    base_href=self.request["url"])
+            html_tree.rewrite_links(
+                fix_links_in_lxml_tree,
+                base_href=self.request["url"]
+            )
+
         self.html = html_tree
-        for row in self.html.xpath("//tr"):
-            date = (row.xpath(
-                ".//td[contains(@class, 'views-field-field-opinions-date-filed')]")[
-                        0].text_content().strip())
-            lower_court = (row.xpath(
-                ".//td[contains(@class, 'views-field-field-opinions-county')]")[
-                               0].text_content().strip())
-            section = row.xpath(
-                ".//td[contains(@class, 'views-field-field-opinions-case-number')]")[
-                0]
-            url = section.xpath(".//a")[0].get("href")
-            name = section.xpath(".//a")[0].text_content()
-            rows = [row.strip() for row in
-                    section.text_content().strip().split("\n", 4)]
-            judge = rows[2]
-            if judge is not None and str(judge).__contains__(":"):
-                judge = [judge.split(": ")[1]]
+
+        for row in self.html.xpath("//tbody/tr"):
+            date_nodes = row.xpath(
+                ".//td[contains(@class, "
+                "'views-field-field-opinions-date-filed')]"
+            )
+
+            section_nodes = row.xpath(
+                ".//td[contains(@class, "
+                "'views-field-field-opinions-case-number')]"
+            )
+
+            if not date_nodes or not section_nodes:
+                continue
+
+            date = date_nodes[0].text_content().strip()
+
+            lower_court_nodes = row.xpath(
+                ".//td[contains(@class, "
+                "'views-field-field-opinions-county')]"
+            )
+
+            lower_court = (
+                lower_court_nodes[0].text_content().strip()
+                if lower_court_nodes
+                else ""
+            )
+
+            section = section_nodes[0]
+
+            anchors = section.xpath(".//a")
+
+            if not anchors:
+                continue
+
+            anchor = anchors[0]
+
+            name = anchor.text_content().strip()
+            url = anchor.get("href") or ""
+
+            values = [
+                value.strip()
+                for value in section.text_content().split("\n")
+                if value.strip()
+            ]
+
+            docket = []
+
+            for value in values:
+                if "-CCA-" in value:
+                    docket = [value]
+                    break
+
+            judge = []
+
+            for value in values:
+                if value.lower().startswith("authoring judge:"):
+                    judge_text = value.split(":", 1)[1].strip()
+
+                    if judge_text:
+                        judge = [judge_text]
+
+                    break
+
+            summary_nodes = section.xpath(".//p/p")
+
+            if summary_nodes:
+                summary = " ".join(
+                    node.text_content().strip()
+                    for node in summary_nodes
+                    if node.text_content().strip()
+                )
             else:
-                judge = []
-            if not url.startswith('http'):
-                url = "https://www.tncourts.gov"+url
+                summary = values[-1] if values else ""
+
+            if url and not url.startswith(("http://", "https://")):
+                if not url.startswith("/"):
+                    url = "/" + url
+
+                url = "https://www.tncourts.gov" + url
+
             self.cases.append(
-                {"date": date, "lower_court": lower_court, "url": url,
-                 "name": name, "docket": [rows[1]], "judge": judge,
-                 "summary": rows[-1], })
+                {
+                    "date": date,
+                    "lower_court": lower_court,
+                    "url": url,
+                    "name": name,
+                    "docket": docket,
+                    "judge": judge,
+                    "summary": summary,
+                }
+            )
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         start_date = start_date.date().strftime('%y-%m-%d')

@@ -13,19 +13,20 @@ class Site(tenn.Site):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.request["headers"] = {
-            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Encoding": "gzip, deflate, br, zstd",
             "Accept-Language": "en-US,en;q=0.5",
             "Connection": "keep-alive",
-            "Cookie": "_ga_RTSNWWBCT9=GS2.1.s1764148111$o8$g0$t1764148111$j60$l0$h0; _ga=GA1.2.2060124310.1745220238; _gid=GA1.2.650419508.1764148112; _gat_gtag_UA_23086129_1=1",
+            "Cookie": "KEY=1058639*1830053:2132610739:3636735101:1",
             "Host": "www.tncourts.gov",
-            "Referer": "https://www.tncourts.gov/courts/supreme-court/opinions",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-origin",
+            "Priority": "u=0, i",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
             "TE": "trailers",
+            "Upgrade-Insecure-Requests": "1",
             "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
-            "X-Requested-With": "XMLHttpRequest",
         }
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:

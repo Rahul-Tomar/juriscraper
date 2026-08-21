@@ -17,8 +17,10 @@ class Site(OpinionSiteLinear):
         self.method = "Post"
         self.url = "https://www.la4th.org/Search.aspx"
 
-        self.search_month = "June"
-        self.search_year = "2025"
+        now = datetime.now()
+
+        self.search_month = now.strftime("%B")
+        self.search_year = str(now.year)
 
     def _download(self):
         self.downloader_executed = True
