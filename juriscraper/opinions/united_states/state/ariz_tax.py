@@ -32,8 +32,9 @@ class Site(OpinionSiteLinear):
                         dat=strng[:strng.find(" ")]
                         name=strng[strng.find(" ")+1 :]
                         dt = datetime.strptime(dat, "%m/%d/%Y")
-                        formatted_date = dt.strftime("%d/%m/%Y")
-                        res = CasemineUtil.compare_date(self.crawled_till, formatted_date)
+                        formatted_date = dt.strftime("%b %d, %Y")
+                        comp_date = dt.strftime("%d/%m/%Y")
+                        res = CasemineUtil.compare_date(self.crawled_till, comp_date)
                         if res == 1:
                             return
                         dock=records.xpath("./a/text()")

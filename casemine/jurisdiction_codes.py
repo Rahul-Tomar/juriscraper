@@ -733,6 +733,7 @@ def level():
     level.append("850")
     level.append("850")
     level.append("1000")  #Supreme court of maryland
+    level.append("1000") # SUperior court of northern mariana islands
     return level
 
 # jurisdiction_codes.py
@@ -1136,7 +1137,7 @@ def code_list():
     codes.append("T.T.A.B")
     codes.append("P.T.A.B.")
     codes.append("Md.")   #Supreme court of Maryland
-
+    codes.append("N. Mar. I. Commw. Super. Ct.")
 
     return codes
 
@@ -1503,7 +1504,8 @@ def get_juris_code():
 "Superior Court of Connecticut":"Conn. Super. Ct.",                 # new court added by Ashish (26/12/2025)
 "Attorney General of California — Opinion":"Ops.Cal.Atty.Gen.",     # new court added by Ashish (26/12/2025)
 "Texas Judicial Panel on Multidistrict Litigation.": "Tex. J.P.M.L.",  # new court added by Ashish (26/12/2025)
-"Supreme Court of Maryland":"Md."   #Supreme court of Maryland
+"Supreme Court of Maryland":"Md." ,  #Supreme court of Maryland
+  "Superior Court of Northern Mariana Islands":"N. Mar. I.",
     }
     return juris_code_an_name
 

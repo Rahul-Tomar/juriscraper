@@ -80,7 +80,7 @@ class Site(OpinionSiteLinear):
         self.base = "https://128archive.com"
         self.url = self.make_url(start_date,end_date,self.DEFAULT_PAGE_NUMBER,self.DEFAULT_PAGE_SIZE)
         self.html=self._download()
-        panel = self.html.xpath("//h3[@class='panel-title']/span[2]")
+        panel = self.html.xpath("//h2[@class='panel-title']/span[1]")
         txt = str(panel[0].text)
         total_pages = int(txt[txt.index('of') + 2:txt.__len__()].strip()) // 100 + 1
         page=1

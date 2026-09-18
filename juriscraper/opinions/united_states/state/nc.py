@@ -19,9 +19,11 @@ from juriscraper.OpinionSite import OpinionSite
 
 class Site(OpinionSite):
     start_year = 1997
-    current_year = None
+    year = datetime.now().year
     court = "sc"
-    base_url = "http://appellate.nccourts.org/opinions/?c={}&year={}"
+    base_url = f"https://appellate.nccourts.org/opinions/?c={court}&year={year}"
+
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -33,6 +35,7 @@ class Site(OpinionSite):
         self.my_summaries = []
         self.my_neutral_citations = []
         self.my_precedential_statuses = []
+
 
     def _get_case_dates(self):
         case_dates = []

@@ -18,6 +18,7 @@ class Site(OpinionSiteLinear):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.status = "Published"
+        self.docket_value = "-SC-"
         self.proxies = {
             'http': 'http://23.236.197.227:8800',
             'https': 'http://23.236.197.227:8800',
@@ -27,7 +28,7 @@ class Site(OpinionSiteLinear):
             "Accept-Encoding": "gzip, deflate, br, zstd",
             "Accept-Language": "en-US,en;q=0.5",
             "Connection": "keep-alive",
-            "Cookie": "KEY=1058639*1830053:2132610739:3636735101:1",
+            "Cookie": "_ga_RTSNWWBCT9=GS2.1.s1789725088$o9$g1$t1789725101$j47$l0$h0; _ga=GA1.1.1711621671.1786614449; KEY=1186973*1432001:342930508:3198168651:1; _gid=GA1.2.547824138.1789714613",
             "Host": "www.tncourts.gov",
             "Priority": "u=0, i",
             "Sec-Fetch-Dest": "document",
@@ -159,7 +160,7 @@ class Site(OpinionSiteLinear):
             docket = []
 
             for value in values:
-                if "-CCA-" in value:
+                if self.docket_value in value:
                     docket = [value]
                     break
 
@@ -290,7 +291,7 @@ class Site(OpinionSiteLinear):
                             "Accept-Encoding": "gzip, deflate, br, zstd",
                             "Accept-Language": "en-US,en;q=0.5",
                             "Connection": "keep-alive",
-                            "Cookie": "_ga_RTSNWWBCT9=GS2.1.s1764148111$o8$g1$t1764149277$j60$l0$h0; _ga=GA1.2.2060124310.1745220238",
+                            "Cookie": "_ga_RTSNWWBCT9=GS2.1.s1789722285$o8$g1$t1789722340$j5$l0$h0; _ga=GA1.1.1711621671.1786614449; KEY=1178851*2255717:4087119392:1498650946:1; _gid=GA1.2.547824138.1789714613; _gat_gtag_UA_23086129_1=1",
                             "Host": "www.tncourts.gov",
                             "Priority": "u=0, i",
                             "Sec-Fetch-Dest": "document",

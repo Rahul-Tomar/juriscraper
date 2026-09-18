@@ -4,63 +4,123 @@ Court Short Name: NMI
 Author: William Edward Palin
 History:
   2023-01-21: Created by William Palin
+  2026-09-18: Updated for new cnmilaw.gov website structure
 """
 
 import re
-from datetime import date, datetime
-from typing import Any, Dict
+from datetime import datetime
+from typing import Any, Dict, List
+from urllib.parse import urljoin
 
 from juriscraper.lib.string_utils import normalize_dashes
 from juriscraper.OpinionSiteLinear import OpinionSiteLinear
 
 
 class Site(OpinionSiteLinear):
+    court = "Supreme"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
         self.status = "Published"
+        year = datetime.now().year
+        self.url = self._build_url(year)
 
-    def _cleanup_judge_names(self, judges: str) -> [str]:
-        """Extract judge panel
+    def _build_url(self, year: int) -> str:
+        return (
+            "https://cnmilaw.gov/documents"
+            f"?type=case&court={self.court}&year={year}"
+        )
 
-        Because of a judge Torres,Jr. - and the various permutations of his
-        Jr with and without commas and spacing we do a bit of cleanup to
-        get his and the other judges corretly.  Additionally the author is
-        sometimes denoted by a *.  This is cleaned up.
+    def _cleanup_judge_names(self, judges: str) -> List[str]:
+        if not judges:
+            return []
 
-        :param judges: Content of the panel as a string
-        :return: Judges as a string list
-        """
-        judges = [
-            j.replace(" Jr.", "Jr.").strip(" *") for j in judges.split(",")
-        ]
-        judges = [j.replace("Jr.", " Jr.") for j in judges]
-        return judges
+        judges = re.sub(r",\s*Jr\.", " Jr.", judges)
+
+        cleaned_judges = []
+
+        for judge in judges.split(","):
+            judge = judge.strip()
+            judge = judge.strip("*").strip()
+
+            if judge:
+                cleaned_judges.append(judge)
+
+        return cleaned_judges
 
     def _fetch_author(self, judges: str) -> str:
-        """Parse the author from the judge text
+        if not judges:
+            return "Per Curiam"
 
-        :param judges: Cell content
-        :return: The author
-        """
         if "*" not in judges:
-            author = "Per Curiam"
-        else:
-            author = [j for j in judges.split(",") if "*" in j][0].strip("*")
-        return author
+            return "Per Curiam"
+
+        normalized_judges = re.sub(r",\s*Jr\.", " Jr.", judges)
+
+        for judge in normalized_judges.split(","):
+            if "*" in judge:
+                return judge.strip().strip("*").strip()
+
+        return "Per Curiam"
 
     def _process_html(self):
-        for s in self.html.xpath(".//td/a/@href[contains(., 'pdf')]/../../.."):
-            cells = s.xpath(".//td")
-            judge_text = cells[3].text_content()
-            pdf_url = s.xpath(".//td/a/@href")[0]
-            if not pdf_url.startswith("https") and pdf_url:
-                pdf_url = "https://www.cnmilaw.org"+pdf_url
+        rows = self.html.xpath(
+            "//table[contains(@class, 'doctable')]//tbody/tr"
+        )
+
+        for row in rows:
+            cells = row.xpath("./td")
+
+            if len(cells) < 5:
+                continue
+
+            name = cells[0].text_content().strip()
+            citation_text = cells[1].text_content().strip()
+
+            case_date = cells[2].get("data-sort")
+
+            if not case_date:
+                case_date = cells[2].text_content().strip()
+
+            judge_text = cells[3].text_content().strip()
+
+            pdf_links = cells[4].xpath(
+                ".//a[contains(@class, 'pdf-link')]/@href"
+            )
+
+            if not pdf_links:
+                pdf_links = cells[4].xpath(
+                    ".//a[contains("
+                    "translate(@href, "
+                    "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+                    "'abcdefghijklmnopqrstuvwxyz'), "
+                    "'.pdf')]/@href"
+                )
+
+            if not pdf_links:
+                continue
+
+            pdf_url = pdf_links[0].strip()
+
+            if not pdf_url:
+                continue
+
+            pdf_url = urljoin(
+                "https://cnmilaw.gov",
+                pdf_url
+            )
+
+            citation = []
+
+            if citation_text:
+                citation = [citation_text]
+
             self.cases.append(
                 {
-                    "name": cells[0].text_content(),
-                    "citation": [cells[1].text_content()],
-                    "date": cells[2].text_content(),
+                    "name": name,
+                    "citation": citation,
+                    "date": case_date,
                     "judge": self._cleanup_judge_names(judge_text),
                     "author": self._fetch_author(judge_text),
                     "url": pdf_url,
@@ -69,27 +129,32 @@ class Site(OpinionSiteLinear):
             )
 
     def extract_from_text(self, scraped_text: str) -> Dict[str, Any]:
-        """Pass scraped text into function and return data as a dictionary
-
-        :param scraped_text: Text of scraped content
-        :return: metadata containing the docket number
-        """
         normalized_content = normalize_dashes(scraped_text)
-        match = re.findall(r"Case No\.: (.*)", normalized_content)
-        docket_number = match[0] if match else ""
+
+        match = re.search(
+            r"Case\s+No\.?\s*:?\s*([A-Z0-9][A-Z0-9\-–—. ]+)",
+            normalized_content,
+            re.IGNORECASE,
+        )
+
+        docket_number = ""
+
+        if match:
+            docket_number = match.group(1).strip()
+
         metadata = {
             "Docket": {
                 "docket_number": docket_number,
             },
         }
+
         return metadata
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
-        for year in range(start_date.year,end_date.year+1):
-            year = str(year)[-2:]
-            self.url = f"https://www.cnmilaw.org/spm{year}.php#gsc.tab=0"
+        for year in range(start_date.year, end_date.year + 1):
             self.parse()
-            self.downloader_executed=False
+            self.downloader_executed = False
+
         return 0
 
     def get_court_name(self):

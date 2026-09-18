@@ -12,6 +12,7 @@ class Site(tenn.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
+        self.docket_value = "-COA-"
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         start_date = start_date.date().strftime('%y-%m-%d')

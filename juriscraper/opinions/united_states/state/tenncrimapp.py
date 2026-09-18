@@ -12,22 +12,23 @@ class Site(tenn.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
-        self.request["headers"] = {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br, zstd",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Connection": "keep-alive",
-            "Cookie": "KEY=1058639*1830053:2132610739:3636735101:1",
-            "Host": "www.tncourts.gov",
-            "Priority": "u=0, i",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-User": "?1",
-            "TE": "trailers",
-            "Upgrade-Insecure-Requests": "1",
-            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
-        }
+        self.docket_value="-CCA-"
+        # self.request["headers"] = {
+        #     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        #     "Accept-Encoding": "gzip, deflate, br, zstd",
+        #     "Accept-Language": "en-US,en;q=0.5",
+        #     "Connection": "keep-alive",
+        #     "Cookie": "_ga_RTSNWWBCT9=GS2.1.s1788416680$o5$g1$t1788416700$j40$l0$h0; _ga=GA1.1.1711621671.1786614449; KEY=1044569*1663789:3148229409:307972307:1",
+        #     "Host": "www.tncourts.gov",
+        #     "Priority": "u=0, i",
+        #     "Sec-Fetch-Dest": "document",
+        #     "Sec-Fetch-Mode": "navigate",
+        #     "Sec-Fetch-Site": "none",
+        #     "Sec-Fetch-User": "?1",
+        #     "TE": "trailers",
+        #     "Upgrade-Insecure-Requests": "1",
+        #     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
+        # }
 
     def crawling_range(self, start_date: datetime, end_date: datetime) -> int:
         start_date = start_date.date().strftime('%y-%m-%d')

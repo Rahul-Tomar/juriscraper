@@ -26,8 +26,8 @@ class Site(OpinionSiteLinear):
         )
         self.make_backscrape_iterable(kwargs)
         self.proxies={
-            'http': 'http://156.241.221.92:8800',
-            'https': 'http://156.241.221.92:8800',
+            'http': 'http://156.241.221.148:8800',
+            'https': 'http://156.241.221.148:8800',
         }
 
     def set_url(
@@ -156,16 +156,12 @@ class Site(OpinionSiteLinear):
                 try:
                     os.makedirs(path, exist_ok=True)
                     # us_proxy = CasemineUtil.get_us_proxy()
-                    us_proxy = {
-                        "http": "http://156.241.224.100:8800",
-                        "https": "http://156.241.224.100:8800",
-                    }
                     response = requests.get(
                         url=pdf_url,
                         headers={
                             "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
                         },
-                        proxies=us_proxy,
+                        proxies=self.proxies,
                         timeout=120
                     )
                     response.raise_for_status()
