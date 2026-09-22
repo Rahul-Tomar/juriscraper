@@ -11,32 +11,23 @@ class Site(nev.Site):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.court_id = self.__module__
-        self.url = "https://publicaccess.nvsupremecourt.us/WebSupplementalAPI/api/UnpublishedOrders"
-        self.search = "https://caseinfo.nvsupremecourt.us/public/caseSearch.do"
         self.status = "Unpublished"
-        self.court_code = "10001"
-        self.headers = {
-            "Referer": "https://nvcourts.gov/",
-            "XApiKey": "080d4202-61b2-46c5-ad66-f479bf40be11",
-        }
-        self.pdfurl = "https://publicaccess.nvsupremecourt.us/WebSupplementalAPI/api/urlRequest/doc/"
+        self.base_url = "https://acis-api.nvcourts.gov/courts/cms/docketentrydocuments"
+        self.acis_court_id = "dc01122c-a19d-4eb7-bfe9-5b96e93c26fd"
+        self.page_size = 25
+        self.url = self._build_url(0)
+        self.filtered_json = []
 
-    def _process_html(self):
-        """Process Nevada Case Opinions
-
-        :return: None
-        """
-        for case in self.filtered_json:
-            logger.info(f"fetching the details of the case with docket : {case['caseNumber']}")
-            pdf_url = self.get_pdf_url(case['docurl'])
-            self.cases.append(
-                {
-                    "name": case['caseTitle'],
-                    "docket": [case['caseNumber']],
-                    "date": case['date'],
-                    "url": pdf_url,
-                }
-            )
+    def _build_url(self, page: int) -> str:
+        docket_entry_sub_type_id = "1000018"
+        return (
+            f"{self.base_url}"
+            f"?docketEntryHeader.docketEntryTypeID={docket_entry_sub_type_id}"
+            f"&caseHeader.courtID={self.acis_court_id}"
+            f"&page={page}"
+            f"&size={self.page_size}"
+            f"&sort=docketEntryHeader.filedDate%2Cdesc"
+        )
 
     def get_class_name(self):
         return "nev_u"
