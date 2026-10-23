@@ -180,6 +180,11 @@ class Site(OpinionSiteLinear):
 
             summary = html_values[i]
             title = self.extract_case_title(summary)
+            if not title or not title.strip():
+                print(
+                    f"SKIPPING DOCUMENT - EMPTY TITLE | DOCKET: {docket} | DATE: {date}")
+                i += 1
+                continue
             self.download(docket,date,nodes[i],uiId,csrfToken,count)
             count += 1
 

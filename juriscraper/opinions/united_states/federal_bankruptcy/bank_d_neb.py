@@ -37,6 +37,12 @@ class Site(OpinionSiteLinear):
             date_tag = row.xpath('.//span[contains(@class,"date-display-single")]/text()')
             if date_tag:
                 date_text = date_tag[0].strip()
+
+            if not date_text:
+                print("SKIPPING ROW: DATE IS EMPTY")
+                continue
+            if date_tag:
+                date_text = date_tag[0].strip()
                 try:
                     curr_date = datetime.strptime(date_text, "%m/%d/%Y").strftime("%d/%m/%Y")
                 except:

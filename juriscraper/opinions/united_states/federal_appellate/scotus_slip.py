@@ -62,21 +62,35 @@ class Site(OpinionSiteLinear):
             cells = row.xpath(".//td")
             if len(cells) != 6:
                 continue
-            _, date, docket, link, justice, citation = row.xpath(".//td")
+
+            _, date, docket, link, justice, citation = cells
+
             if not link.text_content():
                 continue
-            curr_date = datetime.strptime(date.text_content(), "%m/%d/%y").strftime("%d/%m/%Y")
+
+            date_text = date.text_content().strip()
+
+            try:
+                parsed_date = datetime.strptime(date_text, "%m/%d/%Y")
+            except ValueError:
+                parsed_date = datetime.strptime(date_text, "%m/%d/%y")
+
+            curr_date = parsed_date.strftime("%d/%m/%Y")
+
             res = CasemineUtil.compare_date(self.crawled_till, curr_date)
             if res == 1:
                 return
+
+            justice_code = justice.text_content().strip()
+
             self.cases.append(
                 {
-                    "citation": [citation.text_content()],
-                    "date": date.text_content(),
+                    "citation": [citation.text_content().strip()],
+                    "date": date_text,
                     "url": link.xpath(".//a/@href")[0],
-                    "name": link.text_content(),
-                    "docket": [docket.text_content()],
-                    "judge": [self.justices[justice.text_content()]],
+                    "name": link.text_content().strip(),
+                    "docket": [docket.text_content().strip()],
+                    "judge": [self.justices[justice_code]],
                 }
             )
 
